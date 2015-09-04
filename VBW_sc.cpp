@@ -11,6 +11,7 @@
 #include <gsl/gsl_statistics.h>
 #include <gsl/gsl_siman.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_sf.h>
 #include <omp.h>
 
 using namespace std;
@@ -29,13 +30,13 @@ typedef struct {
 
 block * block_alloc(size_t n) {
         block * t = (block *) malloc(sizeof(block));
-        t->data = (double *) malloc ((n+1) * sizeof(double));
+        t->alphas = (double *) malloc ((n+1) * sizeof(double));
         t->size = n;
         return t;
      	}
 
 void block_free(block * t) {
-        free(t->data);
+        free(t->alphas);
         free(t);
      	}
 
@@ -45,10 +46,14 @@ void block_copy(void *inp, void *outp) {
        	block * out = (block *) outp;
 
        	for(i=0; i< in->size; i++){
-               out->data[i] = in->data[i];
+               out->alphas[i] = in->alphas[i];
        	}
        	out->size = in->size;
-       	out->s = in-> s;
+	out->saxsExpPtr = in->saxsExpPtr;
+	out->saxsErrPtr = in->saxsErrPtr;
+	out->saxsEnsPtr = in->saxsEnsPtr;
+	out->saxsPrePtr = in->saxsPrePtr;
+       	out->saxsScale = in-> saxsScale;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -84,8 +89,8 @@ double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 	return jsd;
 }
 
-int deltaKronecker(const int i; const int j); 
-int deltaKronecker(const int i; const int j) {
+int deltaKronecker(const int i, const int j); 
+int deltaKronecker(const int i, const int j) {
 	int delta;
 	if (i==j) delta = 1;
 	else delta = 0;
@@ -147,10 +152,10 @@ double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gs
 	return sqrt(T/temp);
 }
 
-//Simulated annealing functions
+///////////////////Simulated annealing functions////////////////////////////////
 double L_function(void *xp)  
 {
-  block x = * ((block *) xp);
+  block *x = (block *) xp;
   //Data imports
   gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
   gsl_vector *saxs_exp = (gsl_vector *) (x->saxsExpPtr);
@@ -189,36 +194,37 @@ double L_function(void *xp)
 	}
   } 
   fit_saxs_mix = 0.5 * fit_saxs_mix/(pow(alpha_zero,2)*(alpha_zero+1));
-  L_func+=fit_saxs+fit_saxs_mix;
-  return L_func;
+  Lfunc+=fit_saxs+fit_saxs_mix;
+  return Lfunc;
 }
 
 double L_distance(void *xp, void *yp)
 {
-  block *x = ((block *) xp);
-  block *y = ((block *) yp);
+  block *x = (block *) xp;
+  block *y = (block *) yp;
   double vector_distance = 0.0;
   for (int i=0; i<x->size; i++) {
 	vector_distance+=gsl_pow_2(x->alphas[i]-y->alphas[i]);
+  }
   return sqrt(vector_distance);
 }
 
 void L_print (void *xp)
 {
   block *x = (block *) xp;
-  for(int i=0;i < x->size; i++){
-      printf("%6.2lf ", x->data[i]);
+  for(int i=0; i < x->size; i++){
+      printf("%6.2lf ", x->alphas[i]);
   }
 }
 
 void L_take_step(const gsl_rng * r, void *xp, double step_size)
 {
-  block * x = ((block *) xp);
+  block * x = (block *) xp;
   //The index of which alpha should be modified
   int i = (int) round(gsl_rng_uniform(r)*x->size);
+  printf("%.2g ", x->alphas[i]);
   x->alphas[i] = GSL_MAX(0, x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size));
-  //printf("%.2g\n", gsl_vector_get(x,i));
-
+  printf("%.2g\n", x->alphas[i]);
 }
 
 
@@ -231,31 +237,26 @@ int main()
 {
 	//////////////////// Init section /////////////////////////////////////
 	int n,k,steps,equilibration,samples;
+	double w_cut, saxs_scale_current;
 	char mdfile[80], outfile[80];
-	//Number of measurements in first curve
 	int N; 
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
-	//Restart from already precaclculated vaules
-	fscanf(stdin, "%d", &k); 
-	//Prior weights
-	fscanf(stdin, "%s", &mdfile);
-	cout<<"Reading prior values"<<std::endl; 
-	////////////////////////////
-	cout<<"Reading 1st scatteirng curve"<<std::endl;
-	//Number of SAXS measurements in curve 1
-	fscanf(stdin, "%d", &N); 
-	fscanf(stdin, "%s", &presaxsfile); 
-	fscanf(stdin, "%s", &saxsfile); 
-	fscanf(stdin, "%s", &saxserrfile); 
+	
+	fscanf(stdin, "%d", &k); //Number of structures 
+	fscanf(stdin, "%s", &mdfile); //Prior weights
+	fscanf(stdin, "%d", &N); //Number of SAXS measurments
+	fscanf(stdin, "%s", &presaxsfile); //Theoretical SAXS curves
+	fscanf(stdin, "%s", &saxsfile); //Experimental SAXS files
+	fscanf(stdin, "%s", &saxserrfile); //Experimental Errors
 
-	//Running params
 	fscanf(stdin, "%s", &outfile); 
 	fscanf(stdin, "%d", &equilibration); 
 	fscanf(stdin, "%d", &steps); 
 	fscanf(stdin, "%d", &samples); 
-
+	
+	fscanf(stdin, "%f", &w_cut); //Weight cutoff
 	double alpha_zero;
-
+	
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
@@ -264,45 +265,49 @@ int main()
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
 		*saxs_ens_current = gsl_vector_alloc(N),
-		*bayesian_weight1 = gsl_vector_alloc(k),
 		*memory = gsl_vector_alloc(k+2);
 
 	//Marks indexes that don't pass threshold filter
 	bool removed_indexes[k];
-
 	// Read in data from files //
 	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
 	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
 	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
 	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
-
+	cout<<"Files reading finished"<<std::endl;
 	// initialize random number generators //
-	const gsl_rng_type *K; 
+	const gsl_rng_type *Krng; 
 	gsl_rng *r; 
 	gsl_rng_env_setup(); 
-	K = gsl_rng_default;
-	r = gsl_rng_alloc(K); 
+	Krng = gsl_rng_default;
+	r = gsl_rng_alloc(Krng); 
 	gsl_rng_set(r,time(NULL)); 
 
-	block simAnBlock = block_alloc(k);
-
+	block *simAnBlock = block_alloc(k);
+	
 	//Initialize alphas with prior values
-	for (int i = 0; i < N; i++) {
+	for (int i = 0; i < k; i++) {
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
 
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
-	simAnBlock->saxsEnsPtr = saxs_ens;
 	simAnBlock->saxsPrePtr = saxs_pre;
-	simAnBlock->saxsScale = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
+
+	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
+	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
+	simAnBlock->saxsScale = saxs_scale_current;
+	simAnBlock->saxsEnsPtr = saxs_ens_current;
+
+
+	cout<<"Values have been set"<<std::endl;
 	///////////////////////////////////////////////////////////////////////
 	
 	////////////////////// First iteration ////////////////////////////////
 	cout<<"Equilibration started..."<<std::endl;
-	int N_TRIES = 100*N;
-	int ITERS_FIXED_T = 1;
-	double STEP_SIZE = 1/N_TRIES;
+	int N_TRIES = 100*k;
+	int ITERS_FIXED_T = 1000;
+	double STEP_SIZE = 1.0;
 	double K = 1/5;
 	double T_INITIAL = 2; 
 	double T_MIN = 2.0e-6;
@@ -319,39 +324,44 @@ int main()
 		gsl_vector_set(alpha_ens_current,i,simAnBlock->alphas[i]);
 	}
 	for (int i=0; i < k; i++) {
-                gsl_vector_set(w_ens_current,i,simAnBlock->alphas[i]/alpha_zero);
+                gsl_vector_set(w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
         }
+	double energy_current, energy_min = L_function(simAnBlock);
 	block_destroy(simAnBlock);
 	/////////////////////////////////////////////////////////////////////
 	
 	///////////////////Next iterations //////////////////////////////////
 	cout<<"Simulated annealing started"<<std::endl;
 	int overall_iteration = 0;
+	int last_updated;
 	int L = k;
-	int l;
-	while ( gsl_vector_max(w_ens_current) < w_cut ) {
-		
-		block simAnBlock = block_alloc(L);
+	int l, newL;
+	//Energy from first iteration
+	while ( gsl_vector_min(w_ens_current) > w_cut ) {
+		cout<<"Starting "<<overall_iteration+1<<" iteration."<<std::endl;
+		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		
 		l = 0;
 		for (int i = 0; i < k; i++) {
-			if (removed_indexes[i]!=True) {
+			if (removed_indexes[i]==false) {
 				for (int j = 0; j < N; j++) {
-					gsl_matrix_set(saxs_pre_round,j,i);
+					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
-                		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,l);
+                		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
+			gsl_vector_set(w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
         	}
+
 		//saxs_exp and err_saxs are independent of run
         	simAnBlock->saxsExpPtr = saxs_exp;
         	simAnBlock->saxsErrPtr = err_saxs;
 		simAnBlock->saxsPrePtr = saxs_pre_round;
-		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre_round, w_ens, 0.0, saxs_ens_current);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
         	simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-		
+		saxs_scale_current = simAnBlock->saxsScale;
+	
 		int N_TRIES = 100*L;
         	int ITERS_FIXED_T = 1; 
         	double STEP_SIZE = 1/N_TRIES;
@@ -365,22 +375,24 @@ int main()
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
                   block_copy, block_copy_construct, block_destroy, 
                   0, params);
-
-		l=0;
-		for (int i = 0; i < k; i++) if (removed_indexes[i] == True) l++;
-
-		for (int i = 0; i < L; i++) alpha_zero +=simAnBlock->alphas[i];
-		for (int i = 0; i < L; i++) {
+		newL = 0;
+		for ( int i = 0; i < L; i++ ) alpha_zero +=simAnBlock->alphas[i];
+		for ( int i = 0; i < L; i++ ) {
 			double wib = simAnBlock->alphas[i]/alpha_zero;
 			if (wib < w_cut) {
-				removed_indexes[i+l] = True;
+				gsl_vector_set(alpha_ens_current,i+l,0.0);
+				removed_indexes[i+l] = true;
 			} else {
-				gsl_vector_set(w_ens_current,i+l,wib);
+				gsl_vector_set(alpha_ens_current,i+l,simAnBlock->alphas[i]);
+				newL++;
 			}
 		}
-	
-		if (energyCurrent < energyMin) {
-			energyMin = energyCurrent;
+
+		//Structural library size after discarding structures with weight lower than cuttof
+		L = newL;
+		energy_current = L_function(simAnBlock);
+		if (energy_current < energy_min) {
+			energy_min = energy_current;
 			last_updated = overall_iteration;
 		}
 
@@ -399,7 +411,8 @@ int main()
 	gsl_vector_set(memory, k+1, energy_current);
 
 	ofstream output(outfile);
-        for (int i = 0; i < samples; i++) { for( int j = 0; j < n_sets*k+(2+n_sets); j++) { output << gsl_matrix_get(memory,i,j) << " "; if (j == n_sets*k+(1+n_sets)) { output << endl; } } }
+        for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " "; 
+	output <<gsl_vector_get(memory,k+1)<<endl;
         output.close();
 
 	
