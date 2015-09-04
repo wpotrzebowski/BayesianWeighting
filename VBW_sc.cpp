@@ -222,9 +222,10 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
   block * x = (block *) xp;
   //The index of which alpha should be modified
   int i = (int) round(gsl_rng_uniform(r)*x->size);
-  printf("%.2g ", x->alphas[i]);
-  x->alphas[i] = GSL_MAX(0, x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size));
-  printf("%.2g\n", x->alphas[i]);
+  double u = x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size);
+  //printf("%d %.2g %.2g ", i, x->alphas[i], u);
+  x->alphas[i] = GSL_MAX(0.01, u);
+  //printf("%.2g\n", x->alphas[i]);
 }
 
 
@@ -306,7 +307,7 @@ int main()
 	////////////////////// First iteration ////////////////////////////////
 	cout<<"Equilibration started..."<<std::endl;
 	int N_TRIES = 100*k;
-	int ITERS_FIXED_T = 1000;
+	int ITERS_FIXED_T = 100;
 	double STEP_SIZE = 1.0;
 	double K = 1/5;
 	double T_INITIAL = 2; 
@@ -315,8 +316,9 @@ int main()
 	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 	//Define params before equilibration and after for next rounds
 	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
-		 block_copy, block_copy_construct, block_destroy,                
-                 0, params);
+		 //block_copy, block_copy_construct, block_destroy,                
+		 NULL,NULL,NULL,
+                 k*sizeof(double), params);
 
 	alpha_zero = 0.0;
 	for (int i=0; i < k; i++) {
@@ -363,8 +365,8 @@ int main()
 		saxs_scale_current = simAnBlock->saxsScale;
 	
 		int N_TRIES = 100*L;
-        	int ITERS_FIXED_T = 1; 
-        	double STEP_SIZE = 1/N_TRIES;
+        	int ITERS_FIXED_T = 100; 
+        	double STEP_SIZE = 1.0;
         	double K = 1/5;
         	double T_INITIAL = 1;
         	double T_MIN = 2.0e-6;
@@ -373,8 +375,9 @@ int main()
 
 		//alphas are used from the previous simulation 
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
-                  block_copy, block_copy_construct, block_destroy, 
-                  0, params);
+                  //block_copy, block_copy_construct, block_destroy, 
+		  NULL,NULL,NULL,
+                  L*sizeof(double), params);
 		newL = 0;
 		for ( int i = 0; i < L; i++ ) alpha_zero +=simAnBlock->alphas[i];
 		for ( int i = 0; i < L; i++ ) {
