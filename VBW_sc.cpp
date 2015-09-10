@@ -172,25 +172,27 @@ double L_function(void *xp)
   for (int i = 0; i < L; i++)
 	  alpha_zero+=x->alphas[i];
 
-  Lfunc+=gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
+  Lfunc+= ( gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2) );
 
 
   for (int i = 0; i < L; i++) {
-	Lfunc+=log_gamma_2 - gsl_sf_lngamma( x->alphas[i] );
+	Lfunc+=(log_gamma_2 - gsl_sf_lngamma( x->alphas[i] ));
   }
 
   for (int i = 0; i < L; i++) {
-        Lfunc+=(x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero));
+        Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
   }
  
+  cout<<"First part: "<<Lfunc<<" ";
   for( int i = 0; i< N; i++) {
+	alpha_ens[i] = 0.0;
 	for (int k = 0; k < L; k++) {
-		alpha_ens[i]=x->alphas[k]*gsl_matrix_get(saxs_pre,i,k);
+		alpha_ens[i]+=x->alphas[k]*gsl_matrix_get(saxs_pre,i,k);
 	}
-	fit_saxs += (pow( alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
+	fit_saxs += (pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
 	//fit_saxs += (pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) ); 
   }
-  
+  cout<<"Second part: "<<0.5*fit_saxs<<" "; 
   for( int i = 0; i< L; i++) {
 	for (int j = 0; j < L; j++) {
 		double mix_saxs = 0.0;	
@@ -201,6 +203,7 @@ double L_function(void *xp)
 	}
   } 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
+  cout<<"Third part: "<<0.5*(fit_saxs_mix)<<std::endl;
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   return Lfunc;
 }
@@ -236,12 +239,12 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 {
   block * x = (block *) xp;
   //The index of which alpha should be modified
-  //int i = (int) round(gsl_rng_uniform(r)*x->size);
-  for(int i=0; i < x->size; i++){
+  int i = (int) round(gsl_rng_uniform(r)*x->size);
+  //for(int i=0; i < x->size; i++){
 	double u = x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size);
 	//double u =  x->alphas[i] +  gsl_rng_uniform(r) * 2 * step_size - step_size;
-	x->alphas[i] = GSL_MAX(0.01, u); 
-  }
+	x->alphas[i] = GSL_MAX(0.001, u); 
+  //}
 }
 
 
@@ -318,18 +321,19 @@ int main()
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
-
+	
+	cout<<"Initial Energy "<< L_function(simAnBlock)<<std::endl;
 
 	cout<<"Values have been set"<<std::endl;
 	///////////////////////////////////////////////////////////////////////
 	
 	////////////////////// First iteration ////////////////////////////////
 	cout<<"Equilibration started..."<<std::endl;
-	int N_TRIES = 10000;
-	int ITERS_FIXED_T = 100;
-	double STEP_SIZE = 0.01;
+	int N_TRIES = 100;
+	int ITERS_FIXED_T = 1000;
+	double STEP_SIZE = 0.1;
 	double K = 1.0;
-	double T_INITIAL = 2; 
+	double T_INITIAL = 0.1; 
 	double T_MIN = 2.0e-6;
 	//double MU_T = (T_INITIAL/T_MIN)/(N_TRIES*k); 
 	double MU_T =1.03;
@@ -384,11 +388,11 @@ int main()
         	simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
 	
-		int N_TRIES = 10;
-        	int ITERS_FIXED_T = 100; 
-        	double STEP_SIZE = 0.01;
+		int N_TRIES = 100;
+        	int ITERS_FIXED_T = 1000; 
+        	double STEP_SIZE = 0.1;
         	double K = 1.0;
-        	double T_INITIAL = 1;
+        	double T_INITIAL = 0.08;
         	double T_MIN = 2.0e-6;
         	//double MU_T = (T_INITIAL/T_MIN)/(N_TRIES*L);
 		double MU_T = 1.02;
