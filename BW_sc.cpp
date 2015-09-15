@@ -207,7 +207,7 @@ int main()
 	//Number of strcutures in ensemble
 	fscanf(stdin, "%d", &k); 
 	//Prior weights
-	fscanf(stdin, "%s", &mdfile);
+	fscanf(stdin, "%s", &mdfile[0]);
 	//Number of datasets 
 	fscanf(stdin, "%d", &n_sets);
 
@@ -216,11 +216,11 @@ int main()
 	cout<<"Reading 1st scatteirng curve"<<std::endl;
 	//Number of SAXS measurements in curve 1
 	fscanf(stdin, "%d", &N); 
-	fscanf(stdin, "%s", &presaxsfile); 
-	fscanf(stdin, "%s", &saxsfile); 
-	fscanf(stdin, "%s", &saxserrfile); 
+	fscanf(stdin, "%s", &presaxsfile[0]); 
+	fscanf(stdin, "%s", &saxsfile[0]); 
+	fscanf(stdin, "%s", &saxserrfile[0]); 
 	//Running params
-	fscanf(stdin, "%s", &outfile); 
+	fscanf(stdin, "%s", &outfile[0]); 
 	fscanf(stdin, "%d", &equilibration); 
 	fscanf(stdin, "%d", &steps); 
 	fscanf(stdin, "%d", &samples); 
@@ -235,8 +235,8 @@ int main()
 		*saxs_pre = gsl_matrix_alloc(N,k), 
 		//Two vectors of weights plus some sampling info
 		*memory = gsl_matrix_alloc(samples,n_sets*k+(2+n_sets)),
-		*basis = gsl_matrix_alloc(k-1,k),
-		*weight_samples = gsl_matrix_alloc(steps,k);
+		*basis = gsl_matrix_alloc(k-1,k);
+		//*weight_samples = gsl_matrix_alloc(steps,k);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
@@ -247,7 +247,6 @@ int main()
 		*w_ens_current[np],
 		*h_ens_current[np],
 		*saxs_ens_current[np],
-		*pdm_vec[np],
 		*w_ens_trial[np],
 		*h_ens_trial[np],
 		*saxs_ens_trial[np],
@@ -274,11 +273,11 @@ int main()
 		w_ens_current[i] = gsl_vector_alloc(k); 
 		h_ens_current[i] = gsl_vector_alloc(k-1); 
 		saxs_ens_current[i] = gsl_vector_alloc(N);
-		pdm_vec[i] = gsl_vector_alloc(N);
 		w_ens_trial[i] = gsl_vector_alloc(k); 
 		h_ens_trial[i] = gsl_vector_alloc(k-1); 
 		saxs_ens_trial[i] = gsl_vector_alloc(N);
 	}
+	cout<<"Reading data from files"<<std::endl;
 	// Read in data from files //
 	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
 	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
@@ -286,6 +285,7 @@ int main()
 	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_matrix_fscanf(inFile,tostart); fclose(inFile); }
 
+	cout<<"Reading finished..."<<std::endl;
 	//Create matrix for basis transformation//
 	//First part of equation (4)//
 	temp = 0.0, j = 0.0;
@@ -442,13 +442,14 @@ int main()
 					accepted[rep] += 1.0;
 					energy_current[rep] = energy_trial[rep];
 					
-					if(rep ==0) {
+					//PDM turned off at the moment
+					/*if(rep ==0) {
 						for (int jind=0; jind<k; jind++) {
                                                 	gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current[rep],jind));
                                         	}
 						gsl_vector_memcpy(w_ens_last_accepted,w_ens_current[0]);
 						sampling_step++;
-					}
+					}*/
 	
 				}	
 			
@@ -463,22 +464,23 @@ int main()
 					/*for (int jind=0; jind<k; jind++) {
 						gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current[0],jind));
 					}*/
-					gsl_vector_add(bayesian_weight1,w_ens_current[0]);
-					gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
-					gsl_vector_scale(bayesian_weight1_current,niter);
-					jsd1 = jensen_shannon_div(bayesian_weight1_current,w_ens_current[0],k);
-					jsd1_sum += jsd1;
 					if( foo % skip == 0)
 					{
+						gsl_vector_add(bayesian_weight1,w_ens_current[0]);
+	                                        gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
+        	                                gsl_vector_scale(bayesian_weight1_current,niter);
+                	                        jsd1 = jensen_shannon_div(bayesian_weight1_current,w_ens_current[0],k);
+                        	                jsd1_sum += jsd1;
+
 						cout<<"PED1: "<<sqrt(jsd1_sum*niter)<<std::endl;
 						for( int l = 0; l < n_sets*k; l++) { 
-							gsl_matrix_set(memory,foo / skip -1, l , gsl_vector_get(bayesian_weight1_current,l));
+							gsl_matrix_set(memory,0, l , gsl_vector_get(bayesian_weight1_current,l));
 						//	gsl_matrix_set(memory,foo / skip -1, l , gsl_vector_get(w_ens_current[0],l)); 
 						}
 
-						gsl_matrix_set(memory, foo/skip -1, n_sets*k, f[0]); 
-						gsl_matrix_set(memory, foo/skip -1, n_sets*k+1, saxs_scale_current[0]);
-						gsl_matrix_set(memory, foo/skip -1, n_sets*k+2, energy_current[0]);
+						gsl_matrix_set(memory, 0, n_sets*k, f[0]); 
+						gsl_matrix_set(memory, 0, n_sets*k+1, saxs_scale_current[0]);
+						gsl_matrix_set(memory, 0, n_sets*k+2, energy_current[0]);
 						//gsl_matrix_set(memory, foo/skip -1, n_sets*k+2, energySingleton);
 					}
 					//sampling_step++;
@@ -514,7 +516,7 @@ int main()
 	
 	// output //
 	ofstream output(outfile);
-	for (int i = 0; i < samples; i++) { for( int j = 0; j < n_sets*k+(2+n_sets); j++) { output << gsl_matrix_get(memory,i,j) << " "; if (j == n_sets*k+(1+n_sets)) { output << endl; } } }
+	for( int j = 0; j < n_sets*k+(2+n_sets); j++) { output << gsl_matrix_get(memory,0,j) << " "; if (j == n_sets*k+(1+n_sets)) { output << endl; } } 
 	output.close();
 
 	ofstream restart("restart.dat");
@@ -529,11 +531,11 @@ int main()
 	{
 		cout << "chain: " << i << " temperature: " << temperature[i] << " percent steps accepted: " <<  accepted[i]/steps *100 << endl; 
 		cout << step_size[i] << endl;
-		cout << 2.0* swaps_accepted[i] / float(num_swaps) << endl << endl;
+		cout << 2.0 * swaps_accepted[i] / float(num_swaps) << endl << endl;
 	}
 
-	//MDOEL SELECTION	
-	cout<<"Starting Model Evidence with matrix of size: "<<sampling_step<<std::endl;
+	//MDOEL SELECTION - turned off	
+	/*cout<<"Starting Model Evidence with matrix of size: "<<sampling_step<<std::endl;
         double logBMS, logKDE;
         //logKDE = log(kerneldensity(weight_samples, w_ens_current[0],steps, k));
         logKDE = log(kerneldensity(weight_samples,w_ens_last_accepted,sampling_step,k));
@@ -541,7 +543,7 @@ int main()
         cout<<"Number of steps, PDM, KDE "<<sampling_step<<" "<<logBMS<<" "<<logKDE<<std::endl;
         ofstream pdm("pdm.dat");
         pdm<<logBMS-logKDE<<std::endl;
-        pdm.close();
+        pdm.close();*/
 	
 	return 0;
 }

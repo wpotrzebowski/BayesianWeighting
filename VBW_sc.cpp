@@ -169,6 +169,8 @@ double L_function(void *xp)
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0, fit_saxs=0.0, fit_saxs_mix = 0.0;
+
+  
   for (int i = 0; i < L; i++)
 	  alpha_zero+=x->alphas[i];
 
@@ -183,16 +185,15 @@ double L_function(void *xp)
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
   }
  
-  cout<<"First part: "<<Lfunc<<" ";
+  //cout<<"First part: "<<Lfunc<<" ";
   for( int i = 0; i< N; i++) {
 	alpha_ens[i] = 0.0;
 	for (int k = 0; k < L; k++) {
-		alpha_ens[i]+=x->alphas[k]*gsl_matrix_get(saxs_pre,i,k);
+		alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
 	}
-	fit_saxs += (pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
-	//fit_saxs += (pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) ); 
+	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
-  cout<<"Second part: "<<0.5*fit_saxs<<" "; 
+  //cout<<"Second part: "<<0.5*fit_saxs<<" "; 
   for( int i = 0; i< L; i++) {
 	for (int j = 0; j < L; j++) {
 		double mix_saxs = 0.0;	
@@ -203,7 +204,7 @@ double L_function(void *xp)
 	}
   } 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
-  cout<<"Third part: "<<0.5*(fit_saxs_mix)<<std::endl;
+  //cout<<"Third part: "<<0.5*(fit_saxs_mix)<<std::endl;
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   return Lfunc;
 }
@@ -310,6 +311,7 @@ int main()
 	
 	//Initialize alphas with prior values
 	for (int i = 0; i < k; i++) {
+		cout<<"Weight "<<i<<" "<<gsl_vector_get(w_pre,i)<<std::endl;
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
 
@@ -324,6 +326,15 @@ int main()
 	
 	cout<<"Initial Energy "<< L_function(simAnBlock)<<std::endl;
 
+	double fit_saxs_1 = 0.0;
+	for( int i = 0; i< N; i++) {
+		//float simsaxs = gsl_vector_get(saxs_ens_current,i) ;
+	        //float expsaxs = gsl_vector_get(saxs_exp,i);
+		//cout<<"Sim: "<<simsaxs<<" : "<< expsaxs<<" : "<<simsaxs - expsaxs <<std::endl;
+        	fit_saxs_1 += pow(gsl_vector_get(saxs_ens_current,i) - gsl_vector_get(saxs_exp,i), 2)/pow(gsl_vector_get(err_saxs,i),2);
+  	}
+  	cout<<"Fit saxs "<<fit_saxs_1<<std::endl; 
+
 	cout<<"Values have been set"<<std::endl;
 	///////////////////////////////////////////////////////////////////////
 	
@@ -333,7 +344,7 @@ int main()
 	int ITERS_FIXED_T = 1000;
 	double STEP_SIZE = 0.1;
 	double K = 1.0;
-	double T_INITIAL = 0.1; 
+	double T_INITIAL = 2.0; 
 	double T_MIN = 2.0e-6;
 	//double MU_T = (T_INITIAL/T_MIN)/(N_TRIES*k); 
 	double MU_T =1.03;
@@ -371,16 +382,18 @@ int main()
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
 		l = 0;
+		cout<<"Alphas ";
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
+				cout<<gsl_vector_get(alpha_ens_current,i)<<" ";
                 		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
         	}
-
+		cout<<std::endl;
 		//saxs_exp and err_saxs are independent of run
         	simAnBlock->saxsExpPtr = saxs_exp;
         	simAnBlock->saxsErrPtr = err_saxs;
@@ -390,9 +403,9 @@ int main()
 	
 		int N_TRIES = 100;
         	int ITERS_FIXED_T = 1000; 
-        	double STEP_SIZE = 0.1;
+        	double STEP_SIZE = 1;
         	double K = 1.0;
-        	double T_INITIAL = 0.08;
+        	double T_INITIAL = 1.0;
         	double T_MIN = 2.0e-6;
         	//double MU_T = (T_INITIAL/T_MIN)/(N_TRIES*L);
 		double MU_T = 1.02;
@@ -402,17 +415,36 @@ int main()
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
                   		block_copy, block_copy_construct, block_destroy, 
                   		0, params);
+		/*cout<<"Current weights: ";
+		for ( int i = 0; i < k; i++ ) {
+			cout<< gsl_vector_get( w_ens_current,i )<<" ";
+		}*/
+		cout<<std::endl;
+		energy_current = L_function(simAnBlock);
+                if (energy_current < energy_min) {
+                        energy_min = energy_current;
+                        last_updated = overall_iteration;
+                } else {
+			cout<<"Energy increases... Stoping simulations"<<std::endl;
+			break;
+		}
+                //If L_function doesn't improve after 10 iterations exit program
+                if ((overall_iteration-last_updated)>10) break;
+
 		newL = 0;
 		m = 0; 
+		alpha_zero = 0.0;
 		for ( int i = 0; i < L; i++ ) alpha_zero +=simAnBlock->alphas[i];
 
 		double new_alpha_zero = 0.0;
+		cout<<"Current weights: ";
 		for ( int i = 0; i < k; i++ ) {
-			if (removed_indexes[i]==false) {
+			if ( removed_indexes[i]==false ) {
 				double wib = simAnBlock->alphas[m]/alpha_zero;
+				cout<<wib<<" ";
 				if ( wib < w_cut ) {
 					gsl_vector_set( alpha_ens_current, i, 0.0 );
-					gsl_vector_set( w_ens_current,i,0.0);
+					gsl_vector_set( w_ens_current, i, 0.0);
 					removed_indexes[i] = true;
 				} else {
 					new_alpha_zero += simAnBlock->alphas[m];
@@ -422,6 +454,7 @@ int main()
 				m++;
 			}
 		}
+		cout<<std::endl;		
 		
 		cout<<" Weights: ";	
 		double wght_sum = 0.0;
@@ -438,15 +471,8 @@ int main()
 		
 		//Structural library size after discarding structures with weight lower than cuttof
 		L = newL;
-		energy_current = L_function(simAnBlock);
-		if (energy_current < energy_min) {
-			energy_min = energy_current;
-			last_updated = overall_iteration;
-		}
-
+		
 		block_destroy(simAnBlock);	
-		//If L_function doesn't improve after 10 iterations exit program
-		if ((overall_iteration-last_updated)>10) break;
 		overall_iteration++;
 	}	
 	///////////////////////////////////////////////////////////////////////	
