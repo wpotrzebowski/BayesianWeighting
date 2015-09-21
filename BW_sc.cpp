@@ -17,6 +17,20 @@ using namespace std;
 // Constant defintions
 const double pi = M_PI;
 
+void progress_bar(float progress);
+void progress_bar(float progress) {
+        int barWidth = 70;
+        std::cout << "[";
+        int pos = barWidth * progress;
+        for (int i = 0; i < barWidth; ++i) {
+            if (i < pos) std::cout << "=";
+            else if (i == pos) std::cout << ">";
+            else std::cout << " ";
+        }
+        std::cout << "] " << int(progress * 100.0) << " %\r";
+        std::cout.flush();
+} 
+
 double ientropy(const gsl_vector *w, int k);
 double ientropy(const gsl_vector *w, int k) {
 	double ie = 0.0;
@@ -229,14 +243,15 @@ int main()
 	double h[k], f[np], f_sing[np], accepted[np], step_size[np], temperature[np], swaps_accepted[np];
 	double energy_current[np], energy_trial[np]; 	
 	double fL = 0.001, dh = 0.001, temp = 0.0, j = 0.0;
+	float progress=0.0;
 
 	gsl_matrix *tostart = gsl_matrix_alloc(np, k+2), 
 		*U = gsl_matrix_alloc(k,k-1), 
 		*saxs_pre = gsl_matrix_alloc(N,k), 
 		//Two vectors of weights plus some sampling info
 		*memory = gsl_matrix_alloc(samples,n_sets*k+(2+n_sets)),
-		*basis = gsl_matrix_alloc(k-1,k);
-		//*weight_samples = gsl_matrix_alloc(steps,k);
+		*basis = gsl_matrix_alloc(k-1,k),
+		*weight_samples = gsl_matrix_alloc(samples,k);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
@@ -359,6 +374,10 @@ int main()
 		{
 			for(int j = 0; j < equilibration; j++)
 			{
+				if (rep == 0) {
+					progress = float(j+1)/float(equilibration);
+                                	progress_bar(progress);
+				}
 				//Sampling over entire weights domain
 				f[rep] = gsl_ran_exponential(r[rep], temperature[rep]/Force(h_ens_current[rep],h_pre,k)) + fL;
 
@@ -405,8 +424,7 @@ int main()
 	}
 	
 	for( int i = 0; i < np; i++) { accepted[i] = 0.0; }
-	cout << "Sampling" << endl;
-	double jsd1_sum = 0.0;
+	cout << "\nSampling" << endl;
 	int sampling_step = 0;
 	for(int z = 0; z < num_swaps; z++)
 	{
@@ -456,34 +474,32 @@ int main()
 				
 				if(rep ==0)
 				{
-
 					int foo= z*swap_frequency + j + 1;
-					double niter = 1.0/double(foo);
-					double jsd1 = 0.0;
-					//Storing values for later model evidence calculations
-					/*for (int jind=0; jind<k; jind++) {
-						gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current[0],jind));
-					}*/
+					
+					progress = float(foo)/float(steps);
+                                        progress_bar(progress);
+
 					if( foo % skip == 0)
 					{
+						for (int jind=0; jind<k; jind++) {
+                                                        gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current[rep],jind));
+                                                }
+
+						double niter = 1.0/double(sampling_step+1);
 						gsl_vector_add(bayesian_weight1,w_ens_current[0]);
 	                                        gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
         	                                gsl_vector_scale(bayesian_weight1_current,niter);
-                	                        jsd1 = jensen_shannon_div(bayesian_weight1_current,w_ens_current[0],k);
-                        	                jsd1_sum += jsd1;
 
-						cout<<"PED1: "<<sqrt(jsd1_sum*niter)<<std::endl;
 						for( int l = 0; l < n_sets*k; l++) { 
-							gsl_matrix_set(memory,0, l , gsl_vector_get(bayesian_weight1_current,l));
-						//	gsl_matrix_set(memory,foo / skip -1, l , gsl_vector_get(w_ens_current[0],l)); 
+							//gsl_matrix_set(memory,0, l , gsl_vector_get(bayesian_weight1_current,l));
+							gsl_matrix_set(memory,foo / skip -1, l , gsl_vector_get(w_ens_current[0],l)); 
 						}
 
-						gsl_matrix_set(memory, 0, n_sets*k, f[0]); 
-						gsl_matrix_set(memory, 0, n_sets*k+1, saxs_scale_current[0]);
-						gsl_matrix_set(memory, 0, n_sets*k+2, energy_current[0]);
-						//gsl_matrix_set(memory, foo/skip -1, n_sets*k+2, energySingleton);
+						gsl_matrix_set(memory, foo / skip -1, n_sets*k, f[0]); 
+						gsl_matrix_set(memory, foo / skip -1, n_sets*k+1, saxs_scale_current[0]);
+						gsl_matrix_set(memory, foo / skip -1, n_sets*k+2, energy_current[0]);
+						sampling_step++;
 					}
-					//sampling_step++;
 				}
 			}
 		}
@@ -513,7 +529,24 @@ int main()
 			}
 		}
 	}
-	
+	//Calculating posterior expected divergence
+	//TODO: Make a cluean-up with vector
+	double jsd1_sum = 0.0;
+        double jsd1 = 0.0;
+	for (int s=0; s<sampling_step; s++) {
+		for (int j=0; j<k; j++) {
+			gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
+		}	
+        	jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
+        	jsd1_sum += sqrt(jsd1);
+	}
+        cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
+
+	ofstream bwfile("bwfile.txt");
+	for (int j=0; j<k; j++) bwfile << gsl_vector_get(bayesian_weight1_current,j);
+        bwfile<<endl;
+	bwfile.close();        
+
 	// output //
 	ofstream output(outfile);
 	for( int j = 0; j < n_sets*k+(2+n_sets); j++) { output << gsl_matrix_get(memory,0,j) << " "; if (j == n_sets*k+(1+n_sets)) { output << endl; } } 

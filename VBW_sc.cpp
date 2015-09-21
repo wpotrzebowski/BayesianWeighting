@@ -12,7 +12,6 @@
 #include <gsl/gsl_siman.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_sf.h>
-#include <omp.h>
 
 using namespace std;
 const double pi = M_PI;
@@ -176,7 +175,6 @@ double L_function(void *xp)
 
   Lfunc+= ( gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2) );
 
-
   for (int i = 0; i < L; i++) {
 	Lfunc+=(log_gamma_2 - gsl_sf_lngamma( x->alphas[i] ));
   }
@@ -263,7 +261,8 @@ int main()
 	char mdfile[80], outfile[80];
 	int N; 
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
-	
+	double wdelta = 0.0001;	
+
 	fscanf(stdin, "%d", &k); //Number of structures 
 	fscanf(stdin, "%s", &mdfile[0]); //Prior weights
 	fscanf(stdin, "%d", &N); //Number of SAXS measurments
@@ -277,8 +276,9 @@ int main()
 	fscanf(stdin, "%d", &samples); 
 	
 	fscanf(stdin, "%f", &w_cut); //Weight cutoff
+
 	double alpha_zero;
-	
+
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
@@ -314,7 +314,6 @@ int main()
 		cout<<"Weight "<<i<<" "<<gsl_vector_get(w_pre,i)<<std::endl;
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
-
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
@@ -323,8 +322,9 @@ int main()
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
-	
-	cout<<"Initial Energy "<< L_function(simAnBlock)<<std::endl;
+		
+	//cout<<"Initial Energy "<<std::endl;
+	//cout<< L_function(simAnBlock)<<std::endl;
 
 	double fit_saxs_1 = 0.0;
 	for( int i = 0; i< N; i++) {
@@ -341,18 +341,18 @@ int main()
 	////////////////////// First iteration ////////////////////////////////
 	cout<<"Equilibration started..."<<std::endl;
 	int N_TRIES = 100;
-	int ITERS_FIXED_T = 1000;
+	int ITERS_FIXED_T = 1;
 	double STEP_SIZE = 0.1;
 	double K = 1.0;
 	double T_INITIAL = 2.0; 
-	double T_MIN = 2.0e-6;
-	//double MU_T = (T_INITIAL/T_MIN)/(N_TRIES*k); 
-	double MU_T =1.03;
+	double T_MIN = T_INITIAL*exp(-25);
+	double MU_T = 1.0/exp(-pow(5.0/(100*k),2));
+	//double MU_T =1.03;
 	//cout<<"Damping factor "<<MU_T<<std::endl;
 	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 	//Define params before equilibration and after for next rounds
-	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
+	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params);
 
@@ -402,17 +402,16 @@ int main()
 		simAnBlock->saxsScale = saxs_scale_current;
 	
 		int N_TRIES = 100;
-        	int ITERS_FIXED_T = 1000; 
+        	int ITERS_FIXED_T = 1; 
         	double STEP_SIZE = 1;
         	double K = 1.0;
         	double T_INITIAL = 1.0;
-        	double T_MIN = 2.0e-6;
-        	//double MU_T = (T_INITIAL/T_MIN)/(N_TRIES*L);
-		double MU_T = 1.02;
+		double T_MIN = T_INITIAL*exp(-25);
+        	double MU_T = 1.0/exp(-pow(5.0/(50*L),2));
         	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 		//alphas are used from the previous simulation 
-		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
+		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
                   		block_copy, block_copy_construct, block_destroy, 
                   		0, params);
 		/*cout<<"Current weights: ";
@@ -458,13 +457,20 @@ int main()
 		
 		cout<<" Weights: ";	
 		double wght_sum = 0.0;
+		//int wdelta_count = 0;
 		for ( int i = 0; i < k; i++ ) {
                         if (removed_indexes[i]==false) {
-				 gsl_vector_set( w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
-				 wght_sum+=gsl_vector_get( w_ens_current,i );	
+				//Check if individual weights change for more than delta
+				//if ( fabs(gsl_vector_get( w_ens_current, i) - gsl_vector_get(alpha_ens_current,i)/new_alpha_zero) < wdelta ) {
+				//	wdelta_count++;			
+				//}
+				gsl_vector_set( w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
+				wght_sum+=gsl_vector_get( w_ens_current,i );	
 			}
 		}
 		cout<<wght_sum<<std::endl;
+		//Stoping simulations if weights don't change for more than delta (0.001)
+		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
 
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 	        saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
@@ -474,10 +480,23 @@ int main()
 		
 		block_destroy(simAnBlock);	
 		overall_iteration++;
+		
+		for( int l = 0; l < k; l++) {
+                	gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
+        	}
+
+        	gsl_vector_set(memory, k, saxs_scale_current);
+        	gsl_vector_set(memory, k+1, energy_current);
+
+		ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
+        	//All weights plus saxs scale factor
+        	for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
+        	output <<gsl_vector_get(memory,k+1)<<endl;
+		output.close();
 	}	
 	///////////////////////////////////////////////////////////////////////	
 
-	for( int l = 0; l < k; l++) {
+	/*for( int l = 0; l < k; l++) {
         	gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
         }
 
@@ -488,8 +507,7 @@ int main()
 	//All weights plus saxs scale factor
         for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " "; 
 	output <<gsl_vector_get(memory,k+1)<<endl;
-        output.close();
-
+        output.close();*/
 	
 	gsl_rng_free (r);
 	return 0;
