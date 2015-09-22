@@ -341,18 +341,16 @@ int main()
 	////////////////////// First iteration ////////////////////////////////
 	cout<<"Equilibration started..."<<std::endl;
 	int N_TRIES = 100;
-	int ITERS_FIXED_T = 1;
-	double STEP_SIZE = 0.1;
+	int ITERS_FIXED_T = 500;
+	double STEP_SIZE = 1;
 	double K = 1.0;
 	double T_INITIAL = 2.0; 
-	double T_MIN = T_INITIAL*exp(-25);
-	double MU_T = 1.0/exp(-pow(5.0/(100*k),2));
-	//double MU_T =1.03;
-	//cout<<"Damping factor "<<MU_T<<std::endl;
+        double MU_T = 1.0105;
+       	double T_MIN = 2.7776e-11;
 	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 	//Define params before equilibration and after for next rounds
-	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
+	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params);
 
@@ -402,12 +400,12 @@ int main()
 		simAnBlock->saxsScale = saxs_scale_current;
 	
 		int N_TRIES = 100;
-        	int ITERS_FIXED_T = 1; 
+        	int ITERS_FIXED_T = 500; 
         	double STEP_SIZE = 1;
         	double K = 1.0;
         	double T_INITIAL = 1.0;
-		double T_MIN = T_INITIAL*exp(-25);
-        	double MU_T = 1.0/exp(-pow(5.0/(50*L),2));
+        	double MU_T = 1.0211;
+		double T_MIN = 1.3888e-11;
         	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 		//alphas are used from the previous simulation 
