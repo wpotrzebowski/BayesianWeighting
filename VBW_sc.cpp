@@ -26,6 +26,7 @@ typedef struct {
 	void *saxsPrePtr;
 	void *saxsMixPtr;
 	double saxsScale;
+	int numberProcs;
         } block;
 
 block * block_alloc(size_t n) {
@@ -55,6 +56,7 @@ void block_copy(void *inp, void *outp) {
 	out->saxsPrePtr = in->saxsPrePtr;
 	out->saxsMixPtr = in->saxsMixPtr;
        	out->saxsScale = in->saxsScale;
+	out->numberProcs = in->numberProcs;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -168,9 +170,10 @@ double L_function(void *xp)
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
   gsl_matrix *mix_saxs = (gsl_matrix *) (x->saxsMixPtr);
   double saxs_scale = x->saxsScale;
+  int nprocs = x->numberProcs;
   size_t L = x->size;
   size_t N = saxs_exp->size;
-
+  int rep = 0;
   double alpha_zero = 0.0;
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
@@ -211,18 +214,38 @@ double L_function(void *xp)
   gettimeofday(&t1, NULL);
 
   double smix, deltamix;
-  int Lj = L/nprocs;
-  for( int i = 0; i< L; i++) {
-	for (int j = 0; j < L; j++) {
-		smix = gsl_matrix_get(mix_saxs,i,j);
-		if (i==j) {
-			deltamix = x->alphas[i]*(alpha_zero - x->alphas[i]);
-		} else {
-			deltamix = - x->alphas[i]*x->alphas[j];
+  /*if (L <= nprocs) nprocs = 1;
+  int batch = L/nprocs;
+  int Lij;
+  double fit_saxs_mix_rep[nprocs];
+  for (int n=0; n<nprocs; n++) fit_saxs_mix_rep[rep]=0.0;
+  rep=0;
+  #pragma omp parallel for private(rep)
+  for (rep = 0; rep < nprocs; rep++) { 
+  	for( int i = rep*batch; i < (rep+1)*batch; i++) {
+		for (int j = rep*batch; j < (rep+1)*batch; j++) {
+			smix = gsl_matrix_get(mix_saxs,i,j);
+			deltamix = (i!=j) ? -x->alphas[i]*x->alphas[j] : x->alphas[i]*(alpha_zero - x->alphas[i]);
+			//if (i==j) {
+			//	deltamix = x->alphas[i]*(alpha_zero - x->alphas[i]);
+			//} else {
+			//	deltamix = - x->alphas[i]*x->alphas[j];
+			//}
+			fit_saxs_mix_rep[rep] += smix * deltamix;
 		}
-		fit_saxs_mix += smix * deltamix;
-	}
+  	}
   }
+  for (int n=0; n<nprocs; n++) fit_saxs_mix +=fit_saxs_mix_rep[n];*/
+  int i,j;
+  #pragma omp parallel for private(j)
+  for( i = 0; i < L; i++) {
+  	for (j = 0; j < L; j++) {
+        	smix = gsl_matrix_get(mix_saxs,i,j);
+                deltamix = (i!=j) ? -x->alphas[i]*x->alphas[j] : x->alphas[i]*(alpha_zero - x->alphas[i]);
+               	fit_saxs_mix += smix * deltamix;
+       }
+  }
+	
   gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   //cout<<"Third part: "<<0.5*(fit_saxs_mix)<<std::endl;
@@ -284,7 +307,7 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 int main()
 {
 	//////////////////// Init section /////////////////////////////////////
-	int n,k,steps,equilibration,samples;
+	int n,k,steps,nprocs,samples;
 	double saxs_scale_current;
 	float w_cut;
 	char mdfile[80], outfile[80];
@@ -300,7 +323,7 @@ int main()
 	fscanf(stdin, "%s", &saxserrfile[0]); //Experimental Errors
 
 	fscanf(stdin, "%s", &outfile[0]); 
-	fscanf(stdin, "%d", &equilibration); 
+	fscanf(stdin, "%d", &nprocs); 
 	fscanf(stdin, "%d", &steps); 
 	fscanf(stdin, "%d", &samples); 
 	
@@ -347,7 +370,7 @@ int main()
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
-
+	simAnBlock->numberProcs = nprocs;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
@@ -451,7 +474,7 @@ int main()
         	simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
-		
+		simAnBlock->numberProcs = nprocs;	
 	
 		int N_TRIES = 1;
         	int ITERS_FIXED_T = 1; 
