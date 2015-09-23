@@ -156,9 +156,9 @@ double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gs
 ///////////////////Simulated annealing functions////////////////////////////////
 double L_function(void *xp)  
 {
-  //timeval t1, t2;
-  //double elapsedTime;
-  //gettimeofday(&t1, NULL);
+  timeval t1, t2;
+  double elapsedTime;
+  gettimeofday(&t1, NULL);
 
   block *x = (block *) xp;
   //Data imports
@@ -190,10 +190,11 @@ double L_function(void *xp)
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
   }
 
-  //gettimeofday(&t2, NULL);
-  //elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
-  //cout << "First Part: " << elapsedTime << " s."<<std::endl; 
-  //gettimeofday(&t1, NULL); 
+  gettimeofday(&t2, NULL);
+  elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  cout << "First Part: " << elapsedTime << " ms."<<std::endl; 
+  gettimeofday(&t1, NULL); 
 
   for( int i = 0; i< N; i++) {
 	alpha_ens[i] = 0.0;
@@ -203,23 +204,33 @@ double L_function(void *xp)
 	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
 
-  //gettimeofday(&t2, NULL);
-  //elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
-  //cout << "Second Part: " << elapsedTime << " s."<<std::endl;
-  //gettimeofday(&t1, NULL);
+  gettimeofday(&t2, NULL);
+  elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  cout << "Second Part: " << elapsedTime << " ms."<<std::endl;
+  gettimeofday(&t1, NULL);
 
+  double smix, deltamix;
+  int Lj = L/nprocs;
   for( int i = 0; i< L; i++) {
 	for (int j = 0; j < L; j++) {
-		fit_saxs_mix += gsl_matrix_get(mix_saxs,i,j) * (x->alphas[i]*(alpha_zero - x->alphas[i])*deltaKronecker(i,j) - x->alphas[i]*x->alphas[j]*(1-deltaKronecker(i,j)));
+		smix = gsl_matrix_get(mix_saxs,i,j);
+		if (i==j) {
+			deltamix = x->alphas[i]*(alpha_zero - x->alphas[i]);
+		} else {
+			deltamix = - x->alphas[i]*x->alphas[j];
+		}
+		fit_saxs_mix += smix * deltamix;
 	}
-  } 
+  }
+  gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   //cout<<"Third part: "<<0.5*(fit_saxs_mix)<<std::endl;
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   // compute and print the elapsed time in millisec
-  //gettimeofday(&t2, NULL);
-  //elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
-  //cout << "Energy time: " << elapsedTime << " s."<<std::endl;
+  elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  cout << "Energy time: " << elapsedTime << " ms."<<std::endl;
 
   return Lfunc;
 }
@@ -238,17 +249,18 @@ double L_distance(void *xp, void *yp)
 void L_print (void *xp)
 {
   block *x = (block *) xp;
-  double alpha_zero = 0.0, weights=0.0;
+  double alpha_zero = 0.0;
+  int weights_over_t=0;
   double xdata; 
   for(int i=0; i < x->size; i++){
   	alpha_zero += x->alphas[i];
   }
   for(int i=0; i < x->size; i++){
       xdata =  x->alphas[i]/alpha_zero;
-      weights+=xdata;
-      printf("%6.2lf ", xdata);
+      if (xdata > 0.01) weights_over_t++;
+      //printf("%6.2lf ", xdata);
   }
-  printf("Total weights = %6.2f ", weights);
+  printf("Weights over threshold = %d ", weights_over_t);
 }
 
 void L_take_step(const gsl_rng * r, void *xp, double step_size)
@@ -330,7 +342,6 @@ int main()
 	
 	//Initialize alphas with prior values
 	for (int i = 0; i < k; i++) {
-		cout<<"Weight "<<i<<" "<<gsl_vector_get(w_pre,i)<<std::endl;
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
 	simAnBlock->saxsExpPtr = saxs_exp;
@@ -358,11 +369,11 @@ int main()
 	simAnBlock->saxsMixPtr = saxs_mix;
 
 	//TODO: Remove in the prodcution version////////////////////////////////	
-	double fit_saxs_1 = 0.0;
+	/*double fit_saxs_1 = 0.0;
         for( int i = 0; i< N; i++) {
                 fit_saxs_1 += pow(gsl_vector_get(saxs_ens_current,i) - gsl_vector_get(saxs_exp,i), 2)/pow(gsl_vector_get(err_saxs,i),2);
         }
-  	cout<<"Fit saxs "<<fit_saxs_1<<std::endl; 
+  	cout<<"Fit saxs "<<fit_saxs_1<<std::endl;*/ 
 	///////////////////////////////////////////////////////////////////////
 
 	cout<<"Values have been set"<<std::endl;
@@ -370,8 +381,8 @@ int main()
 	
 	////////////////////// First iteration ////////////////////////////////
 	cout<<"Equilibration started..."<<std::endl;
-	int N_TRIES = 100;
-	int ITERS_FIXED_T = 500;
+	int N_TRIES = 1;
+	int ITERS_FIXED_T = 1;
 	double STEP_SIZE = 1;
 	double K = 1.0;
 	double T_INITIAL = 2.0; 
@@ -380,7 +391,7 @@ int main()
 	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 	//Define params before equilibration and after for next rounds
-	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
+	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params);
 
@@ -442,8 +453,8 @@ int main()
 		simAnBlock->saxsScale = saxs_scale_current;
 		
 	
-		int N_TRIES = 100;
-        	int ITERS_FIXED_T = 500; 
+		int N_TRIES = 1;
+        	int ITERS_FIXED_T = 1; 
         	double STEP_SIZE = 1;
         	double K = 1.0;
         	double T_INITIAL = 1.0;
