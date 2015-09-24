@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <omp.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_blas.h>
@@ -193,11 +194,11 @@ double L_function(void *xp)
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
   }
 
-  gettimeofday(&t2, NULL);
-  elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  cout << "First Part: " << elapsedTime << " ms."<<std::endl; 
-  gettimeofday(&t1, NULL); 
+  //gettimeofday(&t2, NULL);
+  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  //cout << "First Part: " << elapsedTime << " ms."<<std::endl; 
+  //gettimeofday(&t1, NULL); 
 
   for( int i = 0; i< N; i++) {
 	alpha_ens[i] = 0.0;
@@ -207,10 +208,10 @@ double L_function(void *xp)
 	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
 
-  gettimeofday(&t2, NULL);
-  elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  cout << "Second Part: " << elapsedTime << " ms."<<std::endl;
+  //gettimeofday(&t2, NULL);
+  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  //cout << "Second Part: " << elapsedTime << " ms."<<std::endl;
   gettimeofday(&t1, NULL);
 
   double smix, deltamix;
@@ -236,19 +237,27 @@ double L_function(void *xp)
   	}
   }
   for (int n=0; n<nprocs; n++) fit_saxs_mix +=fit_saxs_mix_rep[n];*/
-  int i,j;
-  #pragma omp parallel for private(j)
-  for( i = 0; i < L; i++) {
-  	for (j = 0; j < L; j++) {
-        	smix = gsl_matrix_get(mix_saxs,i,j);
-                deltamix = (i!=j) ? -x->alphas[i]*x->alphas[j] : x->alphas[i]*(alpha_zero - x->alphas[i]);
+  
+  //#pragma omp parallel  
+  //{
+  int i_ind,j_ind;
+  //#pragma omp parallel for private(i_ind, j_ind) shared(smix, deltamix, mix_saxs, alpha_zero, x, fit_saxs_mix) schedule(static)
+  //#pragma omp parallel for private(i_ind, j_ind) schedule(static)
+  for( i_ind = 0; i_ind < L; i_ind++) {
+  	for (j_ind = 0; j_ind < L; j_ind++) {
+        	smix = gsl_matrix_get(mix_saxs,i_ind,j_ind);
+		/*if (i_ind!=j_ind) {
+		      	deltamix = - x->alphas[i_ind]*x->alphas[j_ind];
+                } else {
+		 	deltamix = x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+                }*/
+                deltamix = (i_ind!=j_ind) ? -x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
                	fit_saxs_mix += smix * deltamix;
        }
   }
-	
+  //}
   gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
-  //cout<<"Third part: "<<0.5*(fit_saxs_mix)<<std::endl;
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   // compute and print the elapsed time in millisec
   elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
@@ -379,6 +388,7 @@ int main()
 	//cout<<"Initial Energy "<<std::endl;
 	//cout<< L_function(simAnBlock)<<std::endl;
 
+	//This can be definetly parallelized 
 	double smix;
 	for( int i = 0; i< k; i++) {
         	for (int j = 0; j < k; j++) {
@@ -409,7 +419,8 @@ int main()
 	double STEP_SIZE = 1;
 	double K = 1.0;
 	double T_INITIAL = 2.0; 
-        double MU_T = 1.0105;
+        //double MU_T = 1.0105;
+	double MU_T = 1.000025;
        	double T_MIN = 2.7776e-11;
 	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
@@ -481,7 +492,8 @@ int main()
         	double STEP_SIZE = 1;
         	double K = 1.0;
         	double T_INITIAL = 1.0;
-        	double MU_T = 1.0211;
+        	//double MU_T = 1.0211;
+		double MU_T = 1.00005;
 		double T_MIN = 1.3888e-11;
         	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
