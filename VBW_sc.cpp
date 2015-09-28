@@ -1,34 +1,8 @@
-#include <iostream>
-#include <fstream>
-#include <cmath>
-#include <omp.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_multiroots.h>
-#include <gsl/gsl_statistics.h>
-#include <gsl/gsl_siman.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_sf.h>
-#include <sys/time.h>
+#include "VBW_sc.hh"
+#include "LFuncGpu.hh"
 
 using namespace std;
 const double pi = M_PI;
-
-///////////////Structure which is needed for simulated annealing//////////// 
-typedef struct {
-        size_t size;
-        double *alphas;
-        void *saxsExpPtr;
-	void *saxsErrPtr;
-	void *saxsEnsPtr;
-	void *saxsPrePtr;
-	void *saxsMixPtr;
-	double saxsScale;
-	int numberProcs;
-        } block;
 
 block * block_alloc(size_t n) {
         block * t = (block *) malloc(sizeof(block));
@@ -73,7 +47,6 @@ void block_destroy(void *xp){
 
 ///////////////////////////////Simulated annealing handling finished////////////
 
-double ientropy(const gsl_vector *w, int k);
 double ientropy(const gsl_vector *w, int k) {
 	double ie = 0.0;
 	for (int i=0; i<k; i++) 
@@ -81,7 +54,6 @@ double ientropy(const gsl_vector *w, int k) {
 	return ie;
 }
 
-double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k);
 double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 
 	double jsd;
@@ -93,15 +65,7 @@ double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 	return jsd;
 }
 
-int deltaKronecker(const int i, const int j); 
-int deltaKronecker(const int i, const int j) {
-	int delta;
-	if (i==j) delta = 1;
-	else delta = 0;
-	return delta;
-}
 
-void find_square_root(gsl_vector *w_ens, gsl_vector *w_ens1, double ct, double ct_prim, int k);
 void find_square_root(gsl_vector *w_ens, gsl_vector *w_ens1, double ct, double ct_prim, int k)
 {
 	double ksum;
@@ -134,8 +98,6 @@ void find_square_root(gsl_vector *w_ens, gsl_vector *w_ens1, double ct, double c
 	gsl_vector_free(kconst);
 }
 
-
-double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N); 
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N)
 {
 	double tempa = 0.0, tempb = 0.0;
@@ -146,7 +108,6 @@ double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err
 	return tempa/tempb;
 }
 
-double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T); 
 double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T)
 {
 	double temp = 0.0;
@@ -169,7 +130,7 @@ double L_function(void *xp)
   gsl_vector *saxs_exp = (gsl_vector *) (x->saxsExpPtr);
   gsl_vector *err_saxs = (gsl_vector *) (x->saxsErrPtr);
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
-  gsl_matrix *mix_saxs = (gsl_matrix *) (x->saxsMixPtr);
+  double *mix_saxs = (double *) (x->saxsMixPtr);
   double saxs_scale = x->saxsScale;
   int nprocs = x->numberProcs;
   size_t L = x->size;
@@ -179,6 +140,8 @@ double L_function(void *xp)
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0, fit_saxs=0.0, fit_saxs_mix = 0.0;
+  float fit_saxs_mix2=0.0;
+  float *fitSaxsMixPtr=&fit_saxs_mix2;
 
   
   for (int i = 0; i < L; i++)
@@ -194,11 +157,6 @@ double L_function(void *xp)
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
   }
 
-  //gettimeofday(&t2, NULL);
-  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  //cout << "First Part: " << elapsedTime << " ms."<<std::endl; 
-  //gettimeofday(&t1, NULL); 
 
   for( int i = 0; i< N; i++) {
 	alpha_ens[i] = 0.0;
@@ -208,61 +166,37 @@ double L_function(void *xp)
 	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
 
-  //gettimeofday(&t2, NULL);
-  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  //cout << "Second Part: " << elapsedTime << " ms."<<std::endl;
   gettimeofday(&t1, NULL);
 
   double smix, deltamix;
-  /*if (L <= nprocs) nprocs = 1;
-  int batch = L/nprocs;
-  int Lij;
-  double fit_saxs_mix_rep[nprocs];
-  for (int n=0; n<nprocs; n++) fit_saxs_mix_rep[rep]=0.0;
-  rep=0;
-  #pragma omp parallel for private(rep)
-  for (rep = 0; rep < nprocs; rep++) { 
-  	for( int i = rep*batch; i < (rep+1)*batch; i++) {
-		for (int j = rep*batch; j < (rep+1)*batch; j++) {
-			smix = gsl_matrix_get(mix_saxs,i,j);
-			deltamix = (i!=j) ? -x->alphas[i]*x->alphas[j] : x->alphas[i]*(alpha_zero - x->alphas[i]);
-			//if (i==j) {
-			//	deltamix = x->alphas[i]*(alpha_zero - x->alphas[i]);
-			//} else {
-			//	deltamix = - x->alphas[i]*x->alphas[j];
-			//}
-			fit_saxs_mix_rep[rep] += smix * deltamix;
-		}
-  	}
-  }
-  for (int n=0; n<nprocs; n++) fit_saxs_mix +=fit_saxs_mix_rep[n];*/
-  
-  //#pragma omp parallel  
-  //{
   int i_ind,j_ind;
-  //#pragma omp parallel for private(i_ind, j_ind) shared(smix, deltamix, mix_saxs, alpha_zero, x, fit_saxs_mix) schedule(static)
-  //#pragma omp parallel for private(i_ind, j_ind) schedule(static)
+  #pragma omp parallel num_threads(16)
+  {
   for( i_ind = 0; i_ind < L; i_ind++) {
-  	for (j_ind = 0; j_ind < L; j_ind++) {
-        	smix = gsl_matrix_get(mix_saxs,i_ind,j_ind);
-		/*if (i_ind!=j_ind) {
-		      	deltamix = - x->alphas[i_ind]*x->alphas[j_ind];
-                } else {
-		 	deltamix = x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
-                }*/
-                deltamix = (i_ind!=j_ind) ? -x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+	#pragma omp parallel for private (j_ind)
+  	for (j_ind = i_ind; j_ind < L; j_ind++) {
+        	smix = mix_saxs[L*i_ind+j_ind];
+		//if (i_ind!=j_ind) {
+		//      	deltamix = - x->alphas[i_ind]*x->alphas[j_ind];
+                //} else {
+		// 	deltamix = x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+                //}
+                deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
                	fit_saxs_mix += smix * deltamix;
        }
   }
-  //}
+  }
+  cout << "FitSAXSMix 1: "<< fit_saxs_mix <<std::endl;
+  //LFuncLoopGpu(x,mix_saxs,alpha_zero,fitSaxsMixPtr,L);
+  //fit_saxs_mix2 = *fitSaxsMixPtr; 
+  //cout << "FitSAXSMix 2: "<< fit_saxs_mix2 <<std::endl;
   gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   // compute and print the elapsed time in millisec
   elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  cout << "Energy time: " << elapsedTime << " ms."<<std::endl;
+  cout << "Time: "<< elapsedTime << " ms."<<std::endl;
 
   return Lfunc;
 }
@@ -339,10 +273,9 @@ int main()
 	fscanf(stdin, "%f", &w_cut); //Weight cutoff
 
 	double alpha_zero;
-
+	double *saxs_mix; 
+ 	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
-
-	gsl_matrix *saxs_mix = gsl_matrix_alloc(k,k);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
@@ -396,7 +329,7 @@ int main()
                 	for (int m = 0; m < N; m++) {
 				smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs,m),2);   
 			}
-                        gsl_matrix_set(saxs_mix,i,j,smix);
+                        saxs_mix[i*k+j] = smix;
         	}
 	}
 	simAnBlock->saxsMixPtr = saxs_mix;
@@ -441,7 +374,7 @@ int main()
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	block_destroy(simAnBlock);
-	gsl_matrix_free(saxs_mix);
+	free(saxs_mix);
 	/////////////////////////////////////////////////////////////////////
 	
 	///////////////////Next iterations //////////////////////////////////
@@ -456,7 +389,7 @@ int main()
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		gsl_matrix *saxs_mix_round = gsl_matrix_alloc(L,L);
+		double  *saxs_mix_round =  (double * ) malloc( k * k * sizeof( double )); 
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
@@ -474,7 +407,7 @@ int main()
                                 for (int m = 0; m < N; m++) {
 					smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
         	                }
-	                        gsl_matrix_set(saxs_mix_round,i,j,smix);
+	                        saxs_mix_round[i*L+j]=smix;
                        	}
 		}
                 
@@ -570,7 +503,7 @@ int main()
         	output <<gsl_vector_get(memory,k+1)<<endl;
 		output.close();
 		
-		gsl_matrix_free(saxs_mix_round);
+		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
 	}	
 	///////////////////////////////////////////////////////////////////////	
