@@ -121,8 +121,8 @@ double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gs
 double L_function(void *xp)  
 {
   timeval t1, t2;
-  double elapsedTime;
-  gettimeofday(&t1, NULL);
+  //double elapsedTime;
+  //gettimeofday(&t1, NULL);
 
   block *x = (block *) xp;
   //Data imports
@@ -140,8 +140,6 @@ double L_function(void *xp)
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0, fit_saxs=0.0, fit_saxs_mix = 0.0;
-  float fit_saxs_mix2=0.0;
-  float *fitSaxsMixPtr=&fit_saxs_mix2;
 
   
   for (int i = 0; i < L; i++)
@@ -166,14 +164,12 @@ double L_function(void *xp)
 	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
 
-  gettimeofday(&t1, NULL);
+  //gettimeofday(&t1, NULL);
 
   double smix, deltamix;
   int i_ind,j_ind;
-  #pragma omp parallel num_threads(16)
-  {
+  #pragma omp parallel for reduction(+:fit_saxs_mix) num_threads(nprocs)
   for( i_ind = 0; i_ind < L; i_ind++) {
-	#pragma omp parallel for private (j_ind)
   	for (j_ind = i_ind; j_ind < L; j_ind++) {
         	smix = mix_saxs[L*i_ind+j_ind];
 		//if (i_ind!=j_ind) {
@@ -185,18 +181,13 @@ double L_function(void *xp)
                	fit_saxs_mix += smix * deltamix;
        }
   }
-  }
-  cout << "FitSAXSMix 1: "<< fit_saxs_mix <<std::endl;
-  //LFuncLoopGpu(x,mix_saxs,alpha_zero,fitSaxsMixPtr,L);
-  //fit_saxs_mix2 = *fitSaxsMixPtr; 
-  //cout << "FitSAXSMix 2: "<< fit_saxs_mix2 <<std::endl;
-  gettimeofday(&t2, NULL); 
+  //gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   // compute and print the elapsed time in millisec
-  elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  cout << "Time: "<< elapsedTime << " ms."<<std::endl;
+  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  //cout << "Time: "<< elapsedTime << " ms."<<std::endl;
 
   return Lfunc;
 }
