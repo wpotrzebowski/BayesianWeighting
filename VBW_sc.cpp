@@ -120,9 +120,9 @@ double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gs
 ///////////////////Simulated annealing functions////////////////////////////////
 double L_function(void *xp)  
 {
-  timeval t1, t2;
-  //double elapsedTime;
-  //gettimeofday(&t1, NULL);
+  /*timeval t1, t2;
+  double elapsedTime;
+  gettimeofday(&t1, NULL);*/
 
   block *x = (block *) xp;
   //Data imports
@@ -185,9 +185,9 @@ double L_function(void *xp)
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
   // compute and print the elapsed time in millisec
-  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  //cout << "Time: "<< elapsedTime << " ms."<<std::endl;
+  /*elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  cout << "Time: "<< elapsedTime << " ms."<<std::endl;*/
 
   return Lfunc;
 }
@@ -222,14 +222,11 @@ void L_print (void *xp)
 
 void L_take_step(const gsl_rng * r, void *xp, double step_size)
 {
-  block * x = (block *) xp;
-  //The index of which alpha should be modified
-  int i = (int) round(gsl_rng_uniform(r)*x->size);
-  //for(int i=0; i < x->size; i++){
-	double u = x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size);
-	//double u =  x->alphas[i] +  gsl_rng_uniform(r) * 2 * step_size - step_size;
+  	block * x = (block *) xp;
+  	//The index of which alpha should be modified
+  	int i = (int) round(gsl_rng_uniform(r)*x->size);
+  	double u = x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size);
 	x->alphas[i] = GSL_MAX(0.001, u); 
-  //}
 }
 
 
@@ -241,29 +238,33 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 int main()
 {
 	//////////////////// Init section /////////////////////////////////////
-	int n,k,steps,nprocs,samples;
+	int n,k,nprocs,again=0;
 	double saxs_scale_current;
 	float w_cut;
 	char mdfile[80], outfile[80];
 	int N; 
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
 	double wdelta = 0.0001;	
+	int read_success =0;
 
-	fscanf(stdin, "%d", &k); //Number of structures 
-	fscanf(stdin, "%s", &mdfile[0]); //Prior weights
-	fscanf(stdin, "%d", &N); //Number of SAXS measurments
-	fscanf(stdin, "%s", &presaxsfile[0]); //Theoretical SAXS curves
-	fscanf(stdin, "%s", &saxsfile[0]); //Experimental SAXS files
-	fscanf(stdin, "%s", &saxserrfile[0]); //Experimental Errors
+	read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
+	read_success = fscanf(stdin, "%d", &k); //Number of structures 
+	read_success = fscanf(stdin, "%s", &mdfile[0]); //Prior weights
+	read_success = fscanf(stdin, "%d", &N); //Number of SAXS measurments
+	read_success = fscanf(stdin, "%s", &presaxsfile[0]); //Theoretical SAXS curves
+	read_success = fscanf(stdin, "%s", &saxsfile[0]); //Experimental SAXS files
+	read_success = fscanf(stdin, "%s", &saxserrfile[0]); //Experimental Errors
 
-	fscanf(stdin, "%s", &outfile[0]); 
-	fscanf(stdin, "%d", &nprocs); 
-	fscanf(stdin, "%d", &steps); 
-	fscanf(stdin, "%d", &samples); 
-	
-	fscanf(stdin, "%f", &w_cut); //Weight cutoff
+	read_success = fscanf(stdin, "%s", &outfile[0]); 
+	read_success = fscanf(stdin, "%d", &nprocs); 
+	read_success = fscanf(stdin, "%f", &w_cut); //Weight cutoff
 
+	if (read_success == 0) { 
+		cerr<<"Error reading files"<<std::endl;
+		exit (EXIT_FAILURE);
+	}
 	double alpha_zero;
+	double energy_current, energy_min;
 	double *saxs_mix; 
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
@@ -273,6 +274,7 @@ int main()
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
+		*tostart = gsl_vector_alloc(k+1),
 		*saxs_ens_current = gsl_vector_alloc(N),
 		*memory = gsl_vector_alloc(k+2);
 
@@ -308,12 +310,14 @@ int main()
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
-		
-	//cout<<"Initial Energy "<<std::endl;
-	//cout<< L_function(simAnBlock)<<std::endl;
+	
+	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_vector_fscanf(inFile,tostart); fclose(inFile); }	
+	//timeval t1, t2;
+	//double elapsedTime;
+  	//gettimeofday(&t1, NULL);
 
-	//This can be definetly parallelized 
 	double smix;
+        #pragma omp parallel for reduction(+:smix) num_threads(nprocs) 	
 	for( int i = 0; i< k; i++) {
         	for (int j = 0; j < k; j++) {
 			smix = 0.0;
@@ -323,51 +327,65 @@ int main()
                         saxs_mix[i*k+j] = smix;
         	}
 	}
+	/*gettimeofday(&t2, NULL);
+	// compute and print the elapsed time in millisec
+	elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
+  	elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
+  	cout << "Time: "<< elapsedTime << " ms."<<std::endl;*/
+
 	simAnBlock->saxsMixPtr = saxs_mix;
 
-	//TODO: Remove in the prodcution version////////////////////////////////	
-	/*double fit_saxs_1 = 0.0;
-        for( int i = 0; i< N; i++) {
-                fit_saxs_1 += pow(gsl_vector_get(saxs_ens_current,i) - gsl_vector_get(saxs_exp,i), 2)/pow(gsl_vector_get(err_saxs,i),2);
-        }
-  	cout<<"Fit saxs "<<fit_saxs_1<<std::endl;*/ 
 	///////////////////////////////////////////////////////////////////////
 
 	cout<<"Values have been set"<<std::endl;
 	///////////////////////////////////////////////////////////////////////
-	
-	////////////////////// First iteration ////////////////////////////////
-	cout<<"Equilibration started..."<<std::endl;
-	int N_TRIES = 1;
-	int ITERS_FIXED_T = 1;
-	double STEP_SIZE = 1;
-	double K = 1.0;
-	double T_INITIAL = 2.0; 
-        //double MU_T = 1.0105;
-	double MU_T = 1.000025;
-       	double T_MIN = 2.7776e-11;
-	gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
+	if(again == 1) { 
+		inFile = fopen("restart.dat","r"); 
+		gsl_vector_fscanf(inFile,tostart); 
+		fclose(inFile); 
+		for( int i = 0; i< k; i++) gsl_vector_set(alpha_ens_current,i,gsl_vector_get(tostart,i));
+		energy_min = gsl_vector_get(tostart,k);
+	}
+	else {	
+		////////////////////// First iteration ////////////////////////////////
+		cout<<"Equilibration started..."<<std::endl;
+		int N_TRIES = 1;
+		int ITERS_FIXED_T = 1;
+		double STEP_SIZE = 1;
+		double K = 1.0;
+		double T_INITIAL = 2.0; 
+        	//double MU_T = 1.0105;
+		double MU_T = 1.000025;
+       		double T_MIN = 2.7776e-11;
+		gsl_siman_params_t params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
-	//Define params before equilibration and after for next rounds
-	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, L_print,
+		//Define params before equilibration and after for next rounds
+		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params);
 
-	alpha_zero = 0.0;
-	for (int i=0; i < k; i++) {
-		alpha_zero+=simAnBlock->alphas[i];
-		gsl_vector_set(alpha_ens_current,i,simAnBlock->alphas[i]);
-	}
-	for (int i=0; i < k; i++) {
-                gsl_vector_set(w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
-        }
-	double energy_current, energy_min = L_function(simAnBlock);
-	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
-	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-	block_destroy(simAnBlock);
-	free(saxs_mix);
-	/////////////////////////////////////////////////////////////////////
+		alpha_zero = 0.0;
+		for (int i=0; i < k; i++) {
+			alpha_zero+=simAnBlock->alphas[i];
+			gsl_vector_set(alpha_ens_current,i,simAnBlock->alphas[i]);
+		}
+		for (int i=0; i < k; i++) {
+                	gsl_vector_set(w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
+        	}
+		energy_min = L_function(simAnBlock);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
+		saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
+		block_destroy(simAnBlock);
+		free(saxs_mix);
+		/////////////////////////////////////////////////////////////////////
 	
+		//Store alphas after equilibration stage
+		ofstream restart("restart.dat");
+        	for(int j = 0; j < k; j++) { restart << gsl_vector_get(alpha_ens_current,j)<<" "; }
+        	restart <<energy_min<<std::endl;
+        	restart.close();
+	}
+			
 	///////////////////Next iterations //////////////////////////////////
 	cout<<"Simulated annealing started"<<std::endl;
 	int overall_iteration = 0;
@@ -392,6 +410,7 @@ int main()
 			}
         	}
 
+		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
                 for( int i = 0; i < L; i++) {
                         for (int j = 0; j < L; j++) {
 				smix = 0.0;
@@ -429,12 +448,12 @@ int main()
 		for ( int i = 0; i < k; i++ ) {
 			cout<< gsl_vector_get( w_ens_current,i )<<" ";
 		}*/
-		cout<<std::endl;
 		energy_current = L_function(simAnBlock);
                 if (energy_current < energy_min) {
                         energy_min = energy_current;
                         last_updated = overall_iteration;
-                } else {
+                } 
+		else {
 			cout<<"Energy increases... Stoping simulations"<<std::endl;
 			break;
 		}
