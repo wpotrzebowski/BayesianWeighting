@@ -213,32 +213,38 @@ int main()
 	//Number of measurements in first curve
 	int N; 
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
+	 int read_success =0;
 	//Number of measuremnets in second curve
 	//Restart from already precaclculated vaules
-	fscanf(stdin, "%d", &again); 
+	read_success = fscanf(stdin, "%d", &again); 
 	//Number of processors/temperatures
-	fscanf(stdin, "%d", &np); 
+	read_success = fscanf(stdin, "%d", &np); 
 	//Number of strcutures in ensemble
-	fscanf(stdin, "%d", &k); 
+	read_success = fscanf(stdin, "%d", &k); 
 	//Prior weights
-	fscanf(stdin, "%s", &mdfile[0]);
+	read_success = fscanf(stdin, "%s", &mdfile[0]);
 	//Number of datasets 
-	fscanf(stdin, "%d", &n_sets);
+	read_success = fscanf(stdin, "%d", &n_sets);
 
 	cout<<"Reading prior values"<<std::endl; 
 	////////////////////////////
 	cout<<"Reading 1st scatteirng curve"<<std::endl;
 	//Number of SAXS measurements in curve 1
-	fscanf(stdin, "%d", &N); 
-	fscanf(stdin, "%s", &presaxsfile[0]); 
-	fscanf(stdin, "%s", &saxsfile[0]); 
-	fscanf(stdin, "%s", &saxserrfile[0]); 
+	read_success = fscanf(stdin, "%d", &N); 
+	read_success = fscanf(stdin, "%s", &presaxsfile[0]); 
+	read_success = fscanf(stdin, "%s", &saxsfile[0]); 
+	read_success = fscanf(stdin, "%s", &saxserrfile[0]); 
 	//Running params
-	fscanf(stdin, "%s", &outfile[0]); 
-	fscanf(stdin, "%d", &equilibration); 
-	fscanf(stdin, "%d", &steps); 
-	fscanf(stdin, "%d", &samples); 
+	read_success = fscanf(stdin, "%s", &outfile[0]); 
+	read_success = fscanf(stdin, "%d", &equilibration); 
+	read_success = fscanf(stdin, "%d", &steps); 
+	read_success = fscanf(stdin, "%d", &samples); 
 		
+	if (read_success == 0) {
+                cerr<<"Error reading files"<<std::endl;
+                exit (EXIT_FAILURE);
+        }
+
 	double saxs_scale_current[np];
 	double h[k], f[np], f_sing[np], accepted[np], step_size[np], temperature[np], swaps_accepted[np];
 	double energy_current[np], energy_trial[np]; 	
@@ -422,7 +428,7 @@ int main()
 			}
 		}	
 	}
-	
+	cout<<"F and Energy after equilibrium: "<<f[0]<<" "<<energy_current[0]<<std::endl;	
 	for( int i = 0; i < np; i++) { accepted[i] = 0.0; }
 	cout << "\nSampling" << endl;
 	int sampling_step = 0;
@@ -543,7 +549,7 @@ int main()
         cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	ofstream bwfile("bwfile.txt");
-	for (int j=0; j<k; j++) bwfile << gsl_vector_get(bayesian_weight1_current,j);
+	for (int j=0; j<k; j++) bwfile << gsl_vector_get(bayesian_weight1_current,j)<<" ";
         bwfile<<endl;
 	bwfile.close();        
 

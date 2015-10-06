@@ -120,9 +120,9 @@ double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gs
 ///////////////////Simulated annealing functions////////////////////////////////
 double L_function(void *xp)  
 {
-  /*timeval t1, t2;
-  double elapsedTime;
-  gettimeofday(&t1, NULL);*/
+  //timeval t1, t2;
+  //double elapsedTime;
+  //gettimeofday(&t1, NULL);
 
   block *x = (block *) xp;
   //Data imports
@@ -168,15 +168,28 @@ double L_function(void *xp)
 
   double smix, deltamix;
   int i_ind,j_ind;
-  #pragma omp parallel for reduction(+:fit_saxs_mix) num_threads(nprocs)
+  //int chunk = ((L+1)/10)/nprocs;
+
+  /*#pragma omp parallel for \
+  default(shared) \
+  private (i_ind, j_ind, smix, deltamix) \
+  num_threads(nprocs) \
+  schedule(static,chunk) \
+  reduction(+:fit_saxs_mix)*/
+
+  #pragma omp parallel for \
+  default(shared)  private (i_ind, j_ind, smix, deltamix) \
+  num_threads(nprocs) \
+  schedule(dynamic,1) \
+  reduction(+:fit_saxs_mix)
   for( i_ind = 0; i_ind < L; i_ind++) {
   	for (j_ind = i_ind; j_ind < L; j_ind++) {
         	smix = mix_saxs[L*i_ind+j_ind];
-		//if (i_ind!=j_ind) {
-		//      	deltamix = - x->alphas[i_ind]*x->alphas[j_ind];
-                //} else {
-		// 	deltamix = x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
-                //}
+		/*if (i_ind!=j_ind) {
+		      	deltamix = - x->alphas[i_ind]*x->alphas[j_ind];
+                } else {
+		 	deltamix = x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+                }*/
                 deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
                	fit_saxs_mix += smix * deltamix;
        }
@@ -187,7 +200,7 @@ double L_function(void *xp)
   // compute and print the elapsed time in millisec
   /*elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  cout << "Time: "<< elapsedTime << " ms."<<std::endl;*/
+  cout << "Time: "<<fit_saxs_mix<<" : "<<elapsedTime << " ms."<<std::endl;*/
 
   return Lfunc;
 }
@@ -274,7 +287,7 @@ int main()
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
-		*tostart = gsl_vector_alloc(k+1),
+		*tostart = gsl_vector_alloc(k+2),
 		*saxs_ens_current = gsl_vector_alloc(N),
 		*memory = gsl_vector_alloc(k+2);
 
@@ -345,11 +358,12 @@ int main()
 		fclose(inFile); 
 		for( int i = 0; i< k; i++) gsl_vector_set(alpha_ens_current,i,gsl_vector_get(tostart,i));
 		energy_min = gsl_vector_get(tostart,k);
+		simAnBlock->saxsScale = gsl_vector_get(tostart,k+1);
 	}
 	else {	
 		////////////////////// First iteration ////////////////////////////////
 		cout<<"Equilibration started..."<<std::endl;
-		int N_TRIES = 1;
+		int N_TRIES = 1000;
 		int ITERS_FIXED_T = 1;
 		double STEP_SIZE = 1;
 		double K = 1.0;
@@ -382,7 +396,7 @@ int main()
 		//Store alphas after equilibration stage
 		ofstream restart("restart.dat");
         	for(int j = 0; j < k; j++) { restart << gsl_vector_get(alpha_ens_current,j)<<" "; }
-        	restart <<energy_min<<std::endl;
+        	restart <<energy_min<<" "<<saxs_scale_current<<std::endl;
         	restart.close();
 	}
 			
@@ -430,7 +444,7 @@ int main()
 		simAnBlock->saxsScale = saxs_scale_current;
 		simAnBlock->numberProcs = nprocs;	
 	
-		int N_TRIES = 1;
+		int N_TRIES = 1000;
         	int ITERS_FIXED_T = 1; 
         	double STEP_SIZE = 1;
         	double K = 1.0;
@@ -444,22 +458,21 @@ int main()
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
                   		block_copy, block_copy_construct, block_destroy, 
                   		0, params);
-		/*cout<<"Current weights: ";
-		for ( int i = 0; i < k; i++ ) {
-			cout<< gsl_vector_get( w_ens_current,i )<<" ";
-		}*/
+
 		energy_current = L_function(simAnBlock);
                 if (energy_current < energy_min) {
                         energy_min = energy_current;
                         last_updated = overall_iteration;
                 } 
-		else {
+		/*else {
 			cout<<"Energy increases... Stoping simulations"<<std::endl;
 			break;
-		}
+		}*/
                 //If L_function doesn't improve after 10 iterations exit program
-                if ((overall_iteration-last_updated)>10) break;
-
+                if ((overall_iteration-last_updated)>10) {
+			cout<<"Energy hasn't decreased for 10 iterations. Stoping simulations"<<std::endl;
+			break;
+		}
 		newL = 0;
 		m = 0; 
 		alpha_zero = 0.0;
