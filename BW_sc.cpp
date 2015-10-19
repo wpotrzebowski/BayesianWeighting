@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <time.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_blas.h>
@@ -9,6 +8,7 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_statistics.h>
+#include <time.h>
 #include <omp.h>
 #include "kde.h"
 
@@ -106,7 +106,9 @@ void norm(gsl_vector *v) { gsl_vector_scale(v,1.0/gsl_blas_dasum(v)); } //1 over
 void ilrInv( int k, gsl_vector *jerk, gsl_matrix *U, gsl_vector *in, gsl_vector *out); 
 void ilrInv( int k, gsl_vector *jerk, gsl_matrix *U, gsl_vector *in, gsl_vector *out)
 {
+
 	gsl_blas_dgemv(CblasNoTrans,1.0,U,in,0.0,jerk);
+	
 	for (int i = 0; i < k; i++)  { gsl_vector_set(out,i,exp(gsl_vector_get(jerk,i))); }
 	norm(out);
 }
@@ -146,7 +148,7 @@ void Update(gsl_vector *h_ens,
 	gsl_vector *saxs_ens, gsl_matrix *saxs_pre, 
 	gsl_matrix *U, gsl_vector *jerk, int k)
 {
-	double cm, cm_prim;
+	//double cm, cm_prim;
 	ilrInv(k,jerk,U,h_ens,w_ens);
 
 	/*Concentration depencee
@@ -163,6 +165,7 @@ void Update(gsl_vector *h_ens,
 
 	//These functions compute the matrix-vector product and sum // y = 1.0*A*x
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens, 0.0, saxs_ens);
+
 }
 
 //This function most likely can be run independently of weights
@@ -175,13 +178,16 @@ void RandomStepH(gsl_vector *h_ens_current, gsl_vector *h_ens_trial,
 	gsl_vector *saxs_ens_trial, gsl_matrix *saxs_pre, 
 	gsl_matrix *U, gsl_vector *jerk, gsl_rng *r, double size, int k)
 {
-	for(int i = 0; i < k-1; i++) { 
+	int i = 0;
+	for( i = 0; i < k-1; i++) {
 		gsl_vector_set(h_ens_trial, i, gsl_vector_get(h_ens_current,i) + gsl_ran_gaussian(r,size) ); 
 	}
+
 	Update(h_ens_trial, 
 		w_ens_trial, 
 		saxs_ens_trial,saxs_pre,
 		U,jerk,k);
+
 }
 
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N); 
@@ -380,6 +386,7 @@ int main()
 		{
 			for(int j = 0; j < equilibration; j++)
 			{
+
 				if (rep == 0) {
 					progress = float(j+1)/float(equilibration);
                                 	progress_bar(progress);
@@ -396,11 +403,11 @@ int main()
 					U,jerk[rep],r[rep],step_size[rep],k);
 				
 
+				//TODO: Most likely this can be replaced
 				energy_current[rep] = Energy(h_ens_current[rep],
 					saxs_ens_current[rep],saxs_exp,err_saxs,
 					h_pre,saxs_scale_current[rep],
 					f[rep],k,N,temperature[rep]);
-		
 
 				energy_trial[rep] = Energy(h_ens_trial[rep],
 					saxs_ens_trial[rep],saxs_exp,err_saxs,
@@ -411,11 +418,14 @@ int main()
 				if(gsl_rng_uniform(r[rep]) <= exp(-energy_trial[rep] + energy_current[rep]) )
 				{
 					gsl_vector_memcpy(h_ens_current[rep],h_ens_trial[rep]);
-					Update(h_ens_current[rep],
+					//TODO: Test. Copying vectors instead of calling computationally heavy Update function
+					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
+					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
+					/*Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,
-						U,jerk[rep],k);
-	
+						U,jerk[rep],k);*/
+
 					accepted[rep] += 1.0;
 					energy_current[rep] = energy_trial[rep];
 				}	
@@ -428,7 +438,6 @@ int main()
 			}
 		}	
 	}
-	cout<<"F and Energy after equilibrium: "<<f[0]<<" "<<energy_current[0]<<std::endl;	
 	for( int i = 0; i < np; i++) { accepted[i] = 0.0; }
 	cout << "\nSampling" << endl;
 	int sampling_step = 0;
@@ -459,10 +468,13 @@ int main()
 				if(gsl_rng_uniform(r[rep]) <= exp(-energy_trial[rep] + energy_current[rep]) )
 				{	
 					gsl_vector_memcpy(h_ens_current[rep],h_ens_trial[rep]);
-					Update(h_ens_current[rep],
+					//TODO: Check this as well
+					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
+					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
+					/*Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,
-						U,jerk[rep],k);
+						U,jerk[rep],k);*/
 					accepted[rep] += 1.0;
 					energy_current[rep] = energy_trial[rep];
 					
