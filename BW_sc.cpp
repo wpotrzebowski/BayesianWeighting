@@ -135,7 +135,7 @@ double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl
 	for( int i = 0; i< N; i++) { fit_saxs += (pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) / gsl_vector_get(err_saxs,i) ); }
 	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
 	return 0.5*(fit_saxs + fit_prior)/T;
-	//return 0.5*( fit_prior)/T;
+	//return 0.5*( fit_saxs)/T;
 	//1/T comes from the multiple replica exchnages
 }
 
@@ -215,6 +215,7 @@ int main()
 {
 	int n,k,steps,equilibration,np,samples,skip,swap_frequency = 100, num_swaps, rep = 0, again = 0;
 	int n_sets;
+	int vbw;
 	char mdfile[80], outfile[80];
 	//Number of measurements in first curve
 	int N; 
@@ -222,7 +223,9 @@ int main()
 	 int read_success =0;
 	//Number of measuremnets in second curve
 	//Restart from already precaclculated vaules
-	read_success = fscanf(stdin, "%d", &again); 
+	read_success = fscanf(stdin, "%d", &again);
+	//After VBW run
+        read_success = fscanf(stdin, "%d", &vbw); 
 	//Number of processors/temperatures
 	read_success = fscanf(stdin, "%d", &np); 
 	//Number of strcutures in ensemble
@@ -374,8 +377,11 @@ int main()
 				saxs_ens_current[i],saxs_pre,
 				U,jerk[i],k);
 		}
+				
 	}
-	
+
+
+	if (vbw==1) { for(int i = 0; i < np; i++) step_size[i] = 0.01; }	
 	//In general generates random variates with the given distribution and calculates energy based on these
 	if(again != 1)
 	{
@@ -419,12 +425,12 @@ int main()
 				{
 					gsl_vector_memcpy(h_ens_current[rep],h_ens_trial[rep]);
 					//TODO: Test. Copying vectors instead of calling computationally heavy Update function
-					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
-					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
-					/*Update(h_ens_current[rep],
+					//gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
+					//gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
+					Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,
-						U,jerk[rep],k);*/
+						U,jerk[rep],k);
 
 					accepted[rep] += 1.0;
 					energy_current[rep] = energy_trial[rep];
@@ -438,6 +444,7 @@ int main()
 			}
 		}	
 	}
+
 	for( int i = 0; i < np; i++) { accepted[i] = 0.0; }
 	cout << "\nSampling" << endl;
 	int sampling_step = 0;
@@ -469,12 +476,12 @@ int main()
 				{	
 					gsl_vector_memcpy(h_ens_current[rep],h_ens_trial[rep]);
 					//TODO: Check this as well
-					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
-					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
-					/*Update(h_ens_current[rep],
+					//gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
+					//gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
+					Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,
-						U,jerk[rep],k);*/
+						U,jerk[rep],k);
 					accepted[rep] += 1.0;
 					energy_current[rep] = energy_trial[rep];
 					

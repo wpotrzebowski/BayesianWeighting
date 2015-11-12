@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cstring>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_blas.h>
@@ -8,11 +9,13 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_statistics.h>
-#include <gsl/gsl_siman.h>
+//#include <gsl/gsl_siman.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_sf.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include <omp.h>
+#include "gsl_siman.h"
 
 typedef struct {
         size_t size;
