@@ -246,6 +246,9 @@ int main()
 	char mdfile[80], outfile[80];
 	int N; 
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
+	//csrmsfile corresponds to SHIFTX2 rms
+	//cserrfile contains data for experimental measurements
+	//char precsfile[80], csfile[80], csrmsfile[80], cserrfile[80];
 	double wdelta = 0.0001;	
 	int read_success =0;
 
@@ -283,11 +286,15 @@ int main()
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
+		//*cs_exp = gsl_vector_alloc(n),
+                //*cs_err = gsl_vector_alloc(n),
+		//*cs_rms = gsl_vector_alloc(n),
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
 		*tostart = gsl_vector_alloc(k+2),
 		*saxs_ens_current = gsl_vector_alloc(N),
+		//*cs_ens_current = gsl_vector_alloc(N),
 		*memory = gsl_vector_alloc(k+2);
 
 	//Marks indexes that don't pass threshold filter
@@ -298,6 +305,10 @@ int main()
 	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
 	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
 	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
+	//inFile = fopen(precsfile,"r"); gsl_matrix_fscanf(inFile,cs_pre);fclose(inFile);
+        //inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
+        //inFile = fopen(cserrfile,"r"); gsl_vector_fscanf(inFile,cs_err); fclose(inFile);
+	//inFile = fopen(csrmsfile,"r"); gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
 	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	cout<<"Files reading finished"<<std::endl;
 	// initialize random number generators //
@@ -317,11 +328,17 @@ int main()
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
+	//simAnBlock->csExpPtr = cs_exp;
+        //simAnBlock->csErrPtr = cs_err;
+	//simAnBlock->csRMSPtr = cs_rms;
+        //simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
+	// gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
+	//simAnBlock->csEnsPtr = cs_ens_current;
 	
 	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_vector_fscanf(inFile,tostart); fclose(inFile); }	
 	//timeval t1, t2;
