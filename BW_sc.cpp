@@ -248,7 +248,8 @@ int main()
 	read_success = fscanf(stdin, "%s", &saxsfile[0]); 
 	read_success = fscanf(stdin, "%s", &saxserrfile[0]); 
 	//Chemical shift files
-	/*read_success = fscanf(stdin, "%s", &precsfile[0]);
+	/*read_success = fscanf(stdin, "%d", &n);
+	read_success = fscanf(stdin, "%s", &precsfile[0]);
 	read_success = fscanf(stdin, "%s", &csfile[0]);
         read_success = fscanf(stdin, "%s", &cserrfile[0]);
 	read_success = fscanf(stdin, "%s", &csrmsfile[0]);*/	
@@ -272,7 +273,7 @@ int main()
 	gsl_matrix *tostart = gsl_matrix_alloc(np, k+2), 
 		*U = gsl_matrix_alloc(k,k-1), 
 		*saxs_pre = gsl_matrix_alloc(N,k),
-		*cs_pre = gsl_matrix_alloc(n,k), 
+		//*cs_pre = gsl_matrix_alloc(n,k), 
 		//Two vectors of weights plus some sampling info
 		*memory = gsl_matrix_alloc(samples,n_sets*k+(2+n_sets)),
 		*basis = gsl_matrix_alloc(k-1,k),
@@ -280,9 +281,9 @@ int main()
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
-		*cs_exp = gsl_vector_alloc(n),
-		*cs_err_exp = gsl_vector_alloc(n),
-		*cs_err_pre = gsl_vector_alloc(n),
+		//*cs_exp = gsl_vector_alloc(n),
+		//*cs_err_exp = gsl_vector_alloc(n),
+		//*cs_err_pre = gsl_vector_alloc(n),
 		*jerk[np],
 		*w_pre = gsl_vector_alloc(k),
 		*h_pre = gsl_vector_alloc(k-1),
@@ -290,11 +291,11 @@ int main()
 		*w_ens_current[np],
 		*h_ens_current[np],
 		*saxs_ens_current[np],
-		*cs_ens_current[np],
+		//*cs_ens_current[np],
 		*w_ens_trial[np],
 		*h_ens_trial[np],
 		*saxs_ens_trial[np],
-		*cs_ens_trial[np],
+		//*cs_ens_trial[np],
 		*bayesian_weight1 = gsl_vector_alloc(k),
 		*bayesian_weight1_current = gsl_vector_alloc(k),
 		*w_ens_last_accepted = gsl_vector_alloc(k);
@@ -318,11 +319,11 @@ int main()
 		w_ens_current[i] = gsl_vector_alloc(k); 
 		h_ens_current[i] = gsl_vector_alloc(k-1); 
 		saxs_ens_current[i] = gsl_vector_alloc(N);
-		cs_ens_current[i] = gsl_vector_alloc(n);
+		//cs_ens_current[i] = gsl_vector_alloc(n);
 		w_ens_trial[i] = gsl_vector_alloc(k); 
 		h_ens_trial[i] = gsl_vector_alloc(k-1); 
 		saxs_ens_trial[i] = gsl_vector_alloc(N);
-		cs_ens_trial[i] = gsl_vector_alloc(n);
+		//cs_ens_trial[i] = gsl_vector_alloc(n);
 	}
 	cout<<"Reading data from files"<<std::endl;
 	// Read in data from files //
@@ -453,7 +454,7 @@ int main()
 					//TODO: Test. Copying vectors instead of calling computationally heavy Update function
 					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
 					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
-					// gsl_vector_memcpy(cs_ens_current[rep],cs_ens_trial[rep]);
+					//gsl_vector_memcpy(cs_ens_current[rep],cs_ens_trial[rep]);
 					/*Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,

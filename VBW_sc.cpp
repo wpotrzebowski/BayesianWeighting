@@ -31,6 +31,14 @@ void block_copy(void *inp, void *outp) {
 	out->saxsPrePtr = in->saxsPrePtr;
 	out->saxsMixPtr = in->saxsMixPtr;
        	out->saxsScale = in->saxsScale;
+	
+	/*out->csExpPtr = in->csExpPtr;
+        out->csErrPtr = in->csErrPtr;
+	out->csRmsPtr = in->csRmsPtr;
+        out->csEnsPtr = in->csEnsPtr;
+        out->csPrePtr = in->csPrePtr;
+        out->csMixPtr = in->csMixPtr;*/
+	
 	out->numberProcs = in->numberProcs;
 	}
 
@@ -139,8 +147,9 @@ double L_function(void *xp)
   double alpha_zero = 0.0;
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
-  double Lfunc=0.0, fit_saxs=0.0, fit_saxs_mix = 0.0;
-
+  double Lfunc=0.0;
+  double fit_saxs=0.0, fit_saxs_mix = 0.0;
+  double fit_cs=0.0, fit_cs_mix = 0.0;
   
   for (int i = 0; i < L; i++)
 	  alpha_zero+=x->alphas[i];
@@ -163,6 +172,15 @@ double L_function(void *xp)
 	}
 	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
+ 
+  /*for( int i = 0; i< n; i++) {
+        alpha_ens[i] = 0.0;
+        for (int k = 0; k < L; k++) {
+                alpha_ens[i]+=gsl_matrix_get(cs_pre,i,k)*x->alphas[k];
+        }
+        fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(cs_exp,i), 2) / ( pow(gsl_vector_get(cs_err,i),2) + pow(gsl_vector_get(cs_rms,i),2) ) );
+  }*/
+
 
 
   double smix, deltamix;
@@ -175,17 +193,23 @@ double L_function(void *xp)
   num_threads(nprocs) \
   schedule(dynamic,16) \
   reduction(+:fit_saxs_mix)
+  //reduction(+:cs_saxs_mix)
 
   for(i_ind = 0; i_ind < L; i_ind++) {
   	for ( j_ind = i_ind; j_ind < L; j_ind++) {
 		smix = mix_saxs[L*i_ind+j_ind];
+		//cs_mix = mix_cs[L*i_ind+j_ind];
                 deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
                	fit_saxs_mix += deltamix * smix;
+		//fit_cs_mix += deltamix * cs_smix;
        }
   }
   //gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
+  //fit_cs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
+  //Lfunc+=0.5*(fit_saxs+fit_saxs_mix+fit_cs_mix);
+
   // compute and print the elapsed time in millisec
   //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
   //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
@@ -280,8 +304,10 @@ int main()
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
+	//double *cs_mix;
 	float acceptance_rate = 1.0;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
+	//cs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
@@ -346,14 +372,21 @@ int main()
   	//gettimeofday(&t1, NULL);
 
 	double smix;
-        #pragma omp parallel for reduction(+:smix) num_threads(nprocs) 	
+	//double cs_mix;
+        //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs) 	
+	#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 	for( int i = 0; i< k; i++) {
         	for (int j = 0; j < k; j++) {
 			smix = 0.0;
+			//cs_mix = 0.0;
                 	for (int m = 0; m < N; m++) {
 				smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs,m),2);   
 			}
+			/*for (int m = 0; m < n; m++) {
+                                cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
+                        }*/
                         saxs_mix[i*k+j] = smix;
+			//cs_mix[i*k+j] = cs_mix;
         	}
 	}
 	/*gettimeofday(&t2, NULL);
@@ -363,7 +396,7 @@ int main()
   	cout << "Time: "<< elapsedTime << " ms."<<std::endl;*/
 
 	simAnBlock->saxsMixPtr = saxs_mix;
-
+	//simAnBlock->csMixPtr = cs_mix;
 	///////////////////////////////////////////////////////////////////////
 
 	cout<<"Values have been set"<<std::endl;
@@ -405,6 +438,7 @@ int main()
 		energy_min = L_function(simAnBlock);
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 		saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
+		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
 		block_destroy(simAnBlock);
 		free(saxs_mix);
 		/////////////////////////////////////////////////////////////////////
@@ -429,25 +463,37 @@ int main()
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
 		double  *saxs_mix_round =  (double * ) malloc( k * k * sizeof( double )); 
+
+		//gsl_matrix *cs_pre_round = gsl_matrix_alloc(n,L);
+                //double  *cs_mix_round =  (double * ) malloc( k * k * sizeof( double ));
+
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
+				//for (int j = 0; j < n; j++) {
+                                //        gsl_matrix_set(cs_pre_round,j,l,gsl_matrix_get(cs_pre,j,i));
+                                //}
                 		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
         	}
-
+		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
 		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
                 for( int i = 0; i < L; i++) {
                         for (int j = 0; j < L; j++) {
 				smix = 0.0;
+				//cs_mix = 0.0;
                                 for (int m = 0; m < N; m++) {
 					smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
         	                }
+				/*for (int m = 0; m < n; m++) {
+                                        cs_mix+=gsl_matrix_get(cs_pre_round,m,i)*gsl_matrix_get(cs_pre_round,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
+                                }*/
 	                        saxs_mix_round[i*L+j]=smix;
+				//cs_mix_round[i*L+j]=cs_mix;
                        	}
 		}
                 
@@ -458,6 +504,14 @@ int main()
         	simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
+
+		/*simAnBlock->csExpPtr = cs_exp;
+                simAnBlock->csErrPtr = cs_err;
+		simAnBlock->csRmsPtr = cs_rms;
+                simAnBlock->csPrePtr = cs_pre_round;
+                simAnBlock->csMixPtr = cs_mix_round;
+                simAnBlock->csEnsPtr = cs_ens_current;*/
+
 		simAnBlock->numberProcs = nprocs;	
 		
 		////////////////////////Short equilibration period to find step size/////////////////////////
@@ -533,7 +587,7 @@ int main()
 
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 	        saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-		
+		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof
 		L = newL;
 		
@@ -560,7 +614,8 @@ int main()
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
-
+		//free(cs_mix_round);
+                //gsl_matrix_free(cs_pre_round);
 		if ((overall_iteration-last_updated)>10) {
                         cout<<"Energy hasn't decreased for 10 iterations. Stoping simulations"<<std::endl;
                         break;
