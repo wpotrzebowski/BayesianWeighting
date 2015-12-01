@@ -27,6 +27,7 @@ void block_copy(void *inp, void *outp) {
        	out->size = in->size;
 	out->saxsExpPtr = in->saxsExpPtr;
 	out->saxsErrPtr = in->saxsErrPtr;
+	//TODO: Seems not to be used
 	out->saxsEnsPtr = in->saxsEnsPtr;
 	out->saxsPrePtr = in->saxsPrePtr;
 	out->saxsMixPtr = in->saxsMixPtr;
@@ -35,6 +36,7 @@ void block_copy(void *inp, void *outp) {
 	out->csExpPtr = in->csExpPtr;
         out->csErrPtr = in->csErrPtr;
 	out->csRmsPtr = in->csRmsPtr;
+	//TODO: Seems not to be used
         out->csEnsPtr = in->csEnsPtr;
         out->csPrePtr = in->csPrePtr;
         out->csMixPtr = in->csMixPtr;
@@ -135,12 +137,12 @@ double L_function(void *xp)
 
   block *x = (block *) xp;
   //Data imports
-  gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
+  //gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
   gsl_vector *saxs_exp = (gsl_vector *) (x->saxsExpPtr);
   gsl_vector *err_saxs = (gsl_vector *) (x->saxsErrPtr);
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
   
-  gsl_vector *cs_ens = (gsl_vector *) (x->csEnsPtr);
+  //gsl_vector *cs_ens = (gsl_vector *) (x->csEnsPtr);
   gsl_vector *cs_exp = (gsl_vector *) (x->csExpPtr);
   gsl_vector *cs_err = (gsl_vector *) (x->csErrPtr);
   gsl_vector *cs_rms = (gsl_vector *) (x->csRmsPtr);
@@ -155,7 +157,8 @@ double L_function(void *xp)
   size_t n = cs_exp->size;
   int rep = 0;
   double alpha_zero = 0.0;
-  double alpha_ens[N];
+  double saxs_alpha_ens[N];
+  double cs_alpha_ens[n];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0;
   double fit_saxs=0.0, fit_saxs_mix = 0.0;
@@ -176,19 +179,19 @@ double L_function(void *xp)
 
 
   for( int i = 0; i< N; i++) {
-	alpha_ens[i] = 0.0;
+	saxs_alpha_ens[i] = 0.0;
 	for (int k = 0; k < L; k++) {
-		alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
+		saxs_alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
 	}
-	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
+	fit_saxs += ( pow(saxs_alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
  
   for( int i = 0; i< n; i++) {
-        alpha_ens[i] = 0.0;
+        cs_alpha_ens[i] = 0.0;
         for (int k = 0; k < L; k++) {
-                alpha_ens[i]+=gsl_matrix_get(cs_pre,i,k)*x->alphas[k];
+                cs_alpha_ens[i]+=gsl_matrix_get(cs_pre,i,k)*x->alphas[k];
         }
-        fit_cs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(cs_exp,i), 2) / ( pow(gsl_vector_get(cs_err,i),2) + pow(gsl_vector_get(cs_rms,i),2) ) );
+        fit_cs += ( pow(cs_alpha_ens[i]/alpha_zero - gsl_vector_get(cs_exp,i), 2) / ( pow(gsl_vector_get(cs_err,i),2) + pow(gsl_vector_get(cs_rms,i),2) ) );
   }
 
 
@@ -303,8 +306,8 @@ int main()
 	read_success = fscanf(stdin, "%s", &saxserrfile[0]); //Experimental Errors
 	read_success = fscanf(stdin, "%s", &precsfile[0]); //Theoretical CS curves
         read_success = fscanf(stdin, "%s", &csfile[0]); //Experimental CS files
-        read_success = fscanf(stdin, "%s", &cserrfile[0]); //Experimental CS Errors
-	read_success = fscanf(stdin, "%s", &csrmsfile[0]); //Theoretical CS Errors
+        read_success = fscanf(stdin, "%s", &csrmsfile[0]); //Experimental CS Errors
+	read_success = fscanf(stdin, "%s", &cserrfile[0]); //Theoretical CS Errors
 	read_success = fscanf(stdin, "%s", &outfile[0]); 
 	read_success = fscanf(stdin, "%d", &nprocs); //Number of processors used to run simulations 
 	read_success = fscanf(stdin, "%f", &w_cut); //Weight cutoff
@@ -461,6 +464,7 @@ int main()
 		gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
 		block_destroy(simAnBlock);
 		free(saxs_mix);
+		free(cs_mix);
 		/////////////////////////////////////////////////////////////////////
 	
 		//Store alphas after equilibration stage
