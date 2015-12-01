@@ -297,8 +297,9 @@ int main()
 		*saxs_ens_trial[np],
 		//*cs_ens_trial[np],
 		*bayesian_weight1 = gsl_vector_alloc(k),
-		*bayesian_weight1_current = gsl_vector_alloc(k),
-		*w_ens_last_accepted = gsl_vector_alloc(k);
+		*bayesian_weight1_current = gsl_vector_alloc(k);
+		//Required for model evidence
+		//*w_ens_last_accepted = gsl_vector_alloc(k);
 
 
 	gsl_vector_set_zero(bayesian_weight1);

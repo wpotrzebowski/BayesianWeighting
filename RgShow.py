@@ -1,13 +1,6 @@
 #! /usr/bin/python
 """
-This script reads experimenatal and simulated
-layer lines and convets them to an iamge
-
-Usage: layerLinesToImage.py -e layer_lines(experimental) -s layer_lines(simulated)
-
-layer_lines - text file containing containing three columns 1st: Intensity,
-2nd reciprocal Rs, 3rd: Number of Layer line
-
+Reads radius of gyration data from crysol file and plots histograms
 """
 __author__ = "Wojtek Potrzebowski"
 __maintainer__ = "Wojtek Potrzebowski"
@@ -15,7 +8,7 @@ __email__ = "Wojciech.Potrzebowski@biochemistry.lu.se"
 
 import optparse
 import os
-import sys 
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import string

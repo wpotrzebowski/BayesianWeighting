@@ -55,21 +55,22 @@ void block_destroy(void *xp){
 
 ///////////////////////////////Simulated annealing handling finished////////////
 
-double ientropy(const gsl_vector *w, int k) {
+double ientropy(const gsl_vector *w, int i) {
 	double ie = 0.0;
-	for (int i=0; i<k; i++) 
-		ie -= gsl_vector_get(w,i)*log2(gsl_vector_get(w,i));
+	//for (int i=0; i<k; i++) 
+	ie = gsl_vector_get(w,i)*log2(gsl_vector_get(w,i));
 	return ie;
 }
 
 double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 
-	double jsd;
-	gsl_vector *w_c = gsl_vector_alloc(k);
-	gsl_vector_memcpy(w_c, w_b);
-	gsl_vector_add(w_c,w_a);
-	gsl_vector_scale(w_c,0.5);
-	jsd = ientropy(w_c,k) - 0.5*ientropy(w_a,k) - 0.5*ientropy(w_b,k);
+	double jsd=0.0, s1=0.0, s2=0.0;
+	for (int i=0; i<k; i++) {
+		if ( gsl_vector_get(w_a,i) == 0.0 || gsl_vector_get(w_b,i) == 0.0) continue;
+		s1 +=  gsl_vector_get(w_a,i)*log2(2*gsl_vector_get(w_a,i)/(gsl_vector_get(w_a,i)+gsl_vector_get(w_b,i)));
+		s2 +=  gsl_vector_get(w_b,i)*log2(2*gsl_vector_get(w_b,i)/(gsl_vector_get(w_a,i)+gsl_vector_get(w_b,i)));
+	}
+	jsd =  0.5*(s1+s2);
 	return jsd;
 }
 
@@ -229,21 +230,19 @@ double L_distance(void *xp, void *yp)
   return sqrt(vector_distance);
 }
 
+//No printing is done by default
 void L_print (void *xp)
 {
   block *x = (block *) xp;
   double alpha_zero = 0.0;
-  int weights_over_t=0;
-  double xdata; 
+  double weight; 
   for(int i=0; i < x->size; i++){
   	alpha_zero += x->alphas[i];
   }
   for(int i=0; i < x->size; i++){
-      xdata =  x->alphas[i]/alpha_zero;
-      if (xdata > 0.01) weights_over_t++;
-      //printf("%6.2lf ", xdata);
+      weight =  x->alphas[i]/alpha_zero;
+     //Add vector save here
   }
-  printf("Weights over threshold = %d ", weights_over_t);
 }
 
 void L_take_step(const gsl_rng * r, void *xp, double step_size)
@@ -321,7 +320,14 @@ int main()
 		*tostart = gsl_vector_alloc(k+2),
 		*saxs_ens_current = gsl_vector_alloc(N),
 		//*cs_ens_current = gsl_vector_alloc(N),
-		*memory = gsl_vector_alloc(k+2);
+		*memory = gsl_vector_alloc(k+2),
+		*bayesian_weight1 = gsl_vector_alloc(k),
+                *bayesian_weight1_current = gsl_vector_alloc(k);
+
+	gsl_vector_set_zero(bayesian_weight1);
+	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
+	int samples = 500;
+	gsl_matrix *weight_samples = gsl_matrix_alloc(samples,k);;
 
 	//Marks indexes that don't pass threshold filter
 	bool removed_indexes[k];
@@ -453,6 +459,7 @@ int main()
 	///////////////////Next iterations //////////////////////////////////
 	cout<<"Simulated annealing started"<<std::endl;
 	int overall_iteration = 0;
+	int sampling_step;
 	int last_updated;
 	int L = k;
 	int l, m, newL;
@@ -611,18 +618,46 @@ int main()
         		output <<gsl_vector_get(memory,k+1)<<endl;
 			output.close();
 		}
+	
+		sampling_step = overall_iteration-1;
+		for (int jind=0; jind<k; jind++) {
+                    gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current,jind));
+                }
+
+                double niter = 1.0/double(sampling_step+1);
+               	gsl_vector_add(bayesian_weight1,w_ens_current);
+                gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
+               	gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
 		//free(cs_mix_round);
                 //gsl_matrix_free(cs_pre_round);
 		if ((overall_iteration-last_updated)>10) {
-                        cout<<"Energy hasn't decreased for 10 iterations. Stoping simulations"<<std::endl;
+                        cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
                         break;
                 }
+		
+		if (overall_iteration == samples) {
+			cout<<"Maximum number of iteration has been reached. Stopping simulation"<<std::endl;
+			break;
+		}
 
 	}	
 	///////////////////////////////////////////////////////////////////////	
+
+	//Calculating posterior expected divergence
+        //TODO: Make a cluean-up with vector
+        double jsd1_sum = 0.0;
+        double jsd1 = 0.0;
+        for (int s=0; s<sampling_step; s++) {
+                for (int j=0; j<k; j++) {
+                        gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
+                }
+                jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
+                jsd1_sum += sqrt(jsd1);
+        }
+        cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	gsl_rng_free (r);
 	return 0;
