@@ -1,4 +1,4 @@
-#include "BW_sc.hh"
+#include "BW_CS_sc.hh"
 
 using namespace std;
 
@@ -102,23 +102,24 @@ double Force(gsl_vector *h_ens, gsl_vector *h_pre, int k)
 	return 0.5 * fit_prior;
 }
 
+
 double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, 
-		//gsl_vector *cs_ens, gsl_vector *cs_exp, gsl_vector *cs_err_exp, gsl_vector *cs_err_pre,
+		gsl_vector *cs_ens, gsl_vector *cs_exp, gsl_vector *cs_err, gsl_vector *cs_rms,
 		gsl_vector *h_pre, double saxs_scale,
-		double f, int k, int N, double T)
+		double f, int k, int N, int n, double T)
 {
 	double fit_prior = 0.0, fit_saxs = 0.0, fit_cs = 0.0;
-	//for( int i = 0; i< n; i++) { fit_cs += ( pow( gsl_vector_get(cs_ens,i) - gsl_vector_get(cs_exp,i), 2) / (gsl_vector_get(cs_err_exp,i) + gsl_vector_get(cs_err_pre,i)) ); }
+	for( int i = 0; i< n; i++) { fit_cs += ( pow( gsl_vector_get(cs_ens,i) - gsl_vector_get(cs_exp,i), 2) / (gsl_vector_get(cs_err,i) + gsl_vector_get(cs_rms,i)) ); }
 	for( int i = 0; i< N; i++) { fit_saxs += (pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) / gsl_vector_get(err_saxs,i) ); }
 	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
-	return 0.5*(fit_saxs + fit_prior)/T;
-	//return 0.5*( fit_saxs)/T;
+	return 0.5*(fit_saxs + fit_cs + fit_prior)/T;
 	//1/T comes from the multiple replica exchnages
 }
 
 void Update(gsl_vector *h_ens, 
 	gsl_vector *w_ens, 
 	gsl_vector *saxs_ens, gsl_matrix *saxs_pre, 
+	gsl_vector *cs_ens, gsl_matrix *cs_pre,
 	gsl_matrix *U, gsl_vector *jerk, int k)
 {
 	//double cm, cm_prim;
@@ -138,6 +139,7 @@ void Update(gsl_vector *h_ens,
 
 	//These functions compute the matrix-vector product and sum // y = 1.0*A*x
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens, 0.0, saxs_ens);
+	gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens, 0.0, cs_ens);
 
 }
 
@@ -145,6 +147,7 @@ void Update(gsl_vector *h_ens,
 void RandomStepH(gsl_vector *h_ens_current, gsl_vector *h_ens_trial, 
 	gsl_vector *w_ens_trial, 
 	gsl_vector *saxs_ens_trial, gsl_matrix *saxs_pre, 
+	gsl_vector *cs_ens_trial, gsl_matrix *cs_pre,
 	gsl_matrix *U, gsl_vector *jerk, gsl_rng *r, double size, int k)
 {
 	int i = 0;
@@ -155,6 +158,7 @@ void RandomStepH(gsl_vector *h_ens_current, gsl_vector *h_ens_trial,
 	Update(h_ens_trial, 
 		w_ens_trial, 
 		saxs_ens_trial,saxs_pre,
+		cs_ens_trial,cs_pre,
 		U,jerk,k);
 
 }
@@ -180,12 +184,14 @@ double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gs
 
 int main()
 {
-	int n,k,steps,equilibration,np,samples,skip,swap_frequency = 100, num_swaps, rep = 0, again = 0;
+	int k,steps,equilibration,np,samples,skip,swap_frequency = 100, num_swaps, rep = 0, again = 0;
 	int n_sets;
 	int vbw;
 	char mdfile[80], outfile[80];
 	//Number of measurements in first curve
 	int N; 
+	//Number of chemical shifts experimental measurements
+	int n;
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
 	char precsfile[80], csfile[80], cserrfile[80], csrmsfile[80];
 	int read_success =0;
@@ -212,11 +218,11 @@ int main()
 	read_success = fscanf(stdin, "%s", &saxsfile[0]); 
 	read_success = fscanf(stdin, "%s", &saxserrfile[0]); 
 	//Chemical shift files
-	/*read_success = fscanf(stdin, "%d", &n);
+	read_success = fscanf(stdin, "%d", &n);
 	read_success = fscanf(stdin, "%s", &precsfile[0]);
 	read_success = fscanf(stdin, "%s", &csfile[0]);
         read_success = fscanf(stdin, "%s", &cserrfile[0]);
-	read_success = fscanf(stdin, "%s", &csrmsfile[0]);*/	
+	read_success = fscanf(stdin, "%s", &csrmsfile[0]);	
 	//Running params
 	read_success = fscanf(stdin, "%s", &outfile[0]); 
 	read_success = fscanf(stdin, "%d", &equilibration); 
@@ -237,7 +243,7 @@ int main()
 	gsl_matrix *tostart = gsl_matrix_alloc(np, k+2), 
 		*U = gsl_matrix_alloc(k,k-1), 
 		*saxs_pre = gsl_matrix_alloc(N,k),
-		//*cs_pre = gsl_matrix_alloc(n,k), 
+		*cs_pre = gsl_matrix_alloc(n,k), 
 		//Two vectors of weights plus some sampling info
 		*memory = gsl_matrix_alloc(samples,n_sets*k+(2+n_sets)),
 		*basis = gsl_matrix_alloc(k-1,k),
@@ -245,9 +251,9 @@ int main()
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
-		//*cs_exp = gsl_vector_alloc(n),
-		//*cs_err_exp = gsl_vector_alloc(n),
-		//*cs_err_pre = gsl_vector_alloc(n),
+		*cs_exp = gsl_vector_alloc(n),
+		*cs_err = gsl_vector_alloc(n),
+		*cs_rms = gsl_vector_alloc(n),
 		*jerk[np],
 		*w_pre = gsl_vector_alloc(k),
 		*h_pre = gsl_vector_alloc(k-1),
@@ -255,11 +261,11 @@ int main()
 		*w_ens_current[np],
 		*h_ens_current[np],
 		*saxs_ens_current[np],
-		//*cs_ens_current[np],
+		*cs_ens_current[np],
 		*w_ens_trial[np],
 		*h_ens_trial[np],
 		*saxs_ens_trial[np],
-		//*cs_ens_trial[np],
+		*cs_ens_trial[np],
 		*bayesian_weight1 = gsl_vector_alloc(k),
 		*bayesian_weight1_current = gsl_vector_alloc(k);
 		//Required for model evidence
@@ -284,21 +290,21 @@ int main()
 		w_ens_current[i] = gsl_vector_alloc(k); 
 		h_ens_current[i] = gsl_vector_alloc(k-1); 
 		saxs_ens_current[i] = gsl_vector_alloc(N);
-		//cs_ens_current[i] = gsl_vector_alloc(n);
+		cs_ens_current[i] = gsl_vector_alloc(n);
 		w_ens_trial[i] = gsl_vector_alloc(k); 
 		h_ens_trial[i] = gsl_vector_alloc(k-1); 
 		saxs_ens_trial[i] = gsl_vector_alloc(N);
-		//cs_ens_trial[i] = gsl_vector_alloc(n);
+		cs_ens_trial[i] = gsl_vector_alloc(n);
 	}
 	cout<<"Reading data from files"<<std::endl;
 	// Read in data from files //
 	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
 	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
 	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
-	//inFile = fopen(precsfile,"r"); gsl_matrix_fscanf(inFile,cs_pre);fclose(inFile);
-        //inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
-        //inFile = fopen(csexperrfile,"r"); gsl_vector_fscanf(inFile,cs_err_exp); fclose(inFile);
-	//inFile = fopen(cspreerrfile,"r"); gsl_vector_fscanf(inFile,cs_err_teo); fclose(inFile);
+	inFile = fopen(precsfile,"r"); gsl_matrix_fscanf(inFile,cs_pre);fclose(inFile);
+        inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
+        inFile = fopen(cserrfile,"r"); gsl_vector_fscanf(inFile,cs_err); fclose(inFile);
+	inFile = fopen(csrmsfile,"r"); gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
 	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_matrix_fscanf(inFile,tostart); fclose(inFile); }
 
@@ -345,7 +351,7 @@ int main()
 		RandomStepH(h_ens_current[rep],h_ens_current[rep],
 			w_ens_current[rep], 
 			saxs_ens_current[rep],saxs_pre,
-			//cs_ens_current[rep],cs_pre,
+			cs_ens_current[rep],cs_pre,
 			U,jerk[rep],r[rep],1.0,k);
 	}
 
@@ -363,7 +369,7 @@ int main()
 			Update(h_ens_current[i],
 				w_ens_current[i],
 				saxs_ens_current[i],saxs_pre,
-				//cs_ens_current[rep],cs_pre,
+				cs_ens_current[rep],cs_pre,
 				U,jerk[i],k);
 		}
 				
@@ -395,22 +401,22 @@ int main()
 				RandomStepH(h_ens_current[rep],h_ens_trial[rep],
 					w_ens_trial[rep],  
 					saxs_ens_trial[rep],saxs_pre,
-					//cs_ens_trial[rep],cs_pre,
+					cs_ens_trial[rep],cs_pre,
 					U,jerk[rep],r[rep],step_size[rep],k);
 				
 
 				//TODO: Most likely this can be replaced
 				energy_current[rep] = Energy(h_ens_current[rep],
 					saxs_ens_current[rep],saxs_exp,err_saxs,
-					//cs_ens_current[rep],cs_exp,err_pre_cs, err_exp_cs,
+					cs_ens_current[rep],cs_exp,cs_err,cs_rms,
 					h_pre,saxs_scale_current[rep],
-					f[rep],k,N,temperature[rep]);
+					f[rep],k,N,n,temperature[rep]);
 
 				energy_trial[rep] = Energy(h_ens_trial[rep],
 					saxs_ens_trial[rep],saxs_exp,err_saxs,
-					//cs_ens_trial[rep],cs_exp,err_pre_cs, err_exp_cs,
+					cs_ens_trial[rep],cs_exp,cs_err,cs_rms,
 					h_pre,saxs_scale_current[rep],
-					f[rep],k,N,temperature[rep]);
+					f[rep],k,N,n,temperature[rep]);
 	
 				//Monte Carlo accpeptance in terms of energies
 				if(gsl_rng_uniform(r[rep]) <= exp(-energy_trial[rep] + energy_current[rep]) )
@@ -419,7 +425,7 @@ int main()
 					//TODO: Test. Copying vectors instead of calling computationally heavy Update function
 					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
 					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
-					//gsl_vector_memcpy(cs_ens_current[rep],cs_ens_trial[rep]);
+					gsl_vector_memcpy(cs_ens_current[rep],cs_ens_trial[rep]);
 					/*Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,
@@ -455,18 +461,18 @@ int main()
 				RandomStepH(h_ens_current[rep],h_ens_trial[rep],
 						w_ens_trial[rep], 
 						saxs_ens_trial[rep],saxs_pre,
-						//cs_ens_trial[rep],cs_pre,
+						cs_ens_trial[rep],cs_pre,
 						U,jerk[rep],r[rep],step_size[rep],k);
 				
 				energy_current[rep] = Energy(h_ens_current[rep],saxs_ens_current[rep],saxs_exp,err_saxs,
-						//cs_ens_current[rep],cs_exp,err_exp_cs,err_teo_cs,
+						cs_ens_current[rep],cs_exp,cs_err,cs_rms,
 						h_pre,saxs_scale_current[rep],
-						f[rep],k,N,temperature[rep]);
+						f[rep],k,N,n,temperature[rep]);
 
 				energy_trial[rep] = Energy(h_ens_trial[rep],saxs_ens_trial[rep],saxs_exp,err_saxs,
-						//cs_ens_current[rep],cs_exp,err_exp_cs,err_teo_cs,
+						cs_ens_trial[rep],cs_exp,cs_err,cs_rms,
 						h_pre,saxs_scale_current[rep],
-						f[rep],k,N,temperature[rep]);
+						f[rep],k,N,n,temperature[rep]);
 
 				if(gsl_rng_uniform(r[rep]) <= exp(-energy_trial[rep] + energy_current[rep]) )
 				{	
@@ -474,7 +480,7 @@ int main()
 					//TODO: Check this as well
 					gsl_vector_memcpy(w_ens_current[rep],w_ens_trial[rep]);
 					gsl_vector_memcpy(saxs_ens_current[rep],saxs_ens_trial[rep]);
-					//gsl_vector_memcpy(cs_ens_current[rep],cs_ens_trial[rep]);
+					gsl_vector_memcpy(cs_ens_current[rep],cs_ens_trial[rep]);
 					/*Update(h_ens_current[rep],
 						w_ens_current[rep],
 						saxs_ens_current[rep],saxs_pre,
@@ -538,7 +544,7 @@ int main()
 				gsl_vector_swap(h_ens_current[swapa],h_ens_current[swapb]); 
 				gsl_vector_swap(w_ens_current[swapa],w_ens_current[swapb]); 
 				gsl_vector_swap(saxs_ens_current[swapa],saxs_ens_current[swapb]);
-				//gsl_vector_swap(cs_ens_current[swapa],cs_ens_current[swapb]);
+				gsl_vector_swap(cs_ens_current[swapa],cs_ens_current[swapb]);
 				
 				//TODO: Check if it doesn't make redundant thing
 				temp = saxs_scale_current[swapa]; 
