@@ -220,8 +220,9 @@ double L_function(void *xp)
   //gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   fit_cs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
-  //Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
-  Lfunc+=0.5*(fit_saxs+fit_cs+fit_saxs_mix+fit_cs_mix);
+  //Just chemical shifts
+  Lfunc+=0.5*(fit_cs+fit_cs_mix);
+  //Lfunc+=0.5*(fit_saxs+fit_cs+fit_saxs_mix+fit_cs_mix);
 
   // compute and print the elapsed time in millisec
   //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms

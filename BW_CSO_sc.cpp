@@ -110,7 +110,7 @@ double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl
 {
 	double fit_prior = 0.0, fit_saxs = 0.0, fit_cs = 0.0;
 	for( int i = 0; i< n; i++) { fit_cs += ( pow( gsl_vector_get(cs_ens,i) - gsl_vector_get(cs_exp,i), 2) / (gsl_vector_get(cs_err,i) + gsl_vector_get(cs_rms,i)) ); }
-	for( int i = 0; i< N; i++) { fit_saxs += (pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) / gsl_vector_get(err_saxs,i) ); }
+	//for( int i = 0; i< N; i++) { fit_saxs += (pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) / gsl_vector_get(err_saxs,i) ); }
 	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
 	return 0.5*(fit_saxs + fit_cs + fit_prior)/T;
 	//return 0.5*( fit_cs + fit_prior)/T;
