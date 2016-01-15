@@ -76,7 +76,7 @@ double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 	return jsd;
 }
 
-
+//TODO: These will be replaced with other function
 void find_square_root(gsl_vector *w_ens, gsl_vector *w_ens1, double ct, double ct_prim, int k)
 {
 	double ksum;
