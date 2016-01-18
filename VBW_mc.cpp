@@ -688,8 +688,3 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	gsl_rng_free (r);
 }
 
-int main() {
-
-return 0;
-
-}

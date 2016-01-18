@@ -1,5 +1,10 @@
 ./BW_MC
-./BW_SC
+./VBW_mc.o
+./_vbw.so
+./vbw.py
+./vbw.pyc
+./vbw_wrap.cxx
+./vbw_wrap.o
 ./.git/hooks/applypatch-msg.sample
 ./.git/hooks/commit-msg.sample
 ./.git/hooks/pre-commit.sample
