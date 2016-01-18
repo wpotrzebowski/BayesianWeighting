@@ -310,18 +310,20 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 2. Run simulated anealing to minimize function 
 3. Iteratively remove structures with weights lower than wcut
 */
-int main()
+void run_vbw(const int &again, const int &k, const std::string &mdfile, 
+	const int &N, const std::string &presaxsfile, const std::string &saxsfile, const std::string &saxserrfile,
+	const std::string &outfile, const int &nprocs, const double &w_cut)
 {
 	//////////////////// Init section /////////////////////////////////////
-	int n,k,nprocs,again=0;
-	double saxs_scale_current;
+	/*int n,k,nprocs,again=0;
 	float w_cut;
 	char mdfile[80], outfile[80];
 	int N; 
 	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
-	double wdelta = 0.0001;	
+	*/
+	//double wdelta = 0.0001;	
 	int read_success =0;
-
+	double saxs_scale_current;
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
         int ITERS_FIXED_T ;
@@ -343,7 +345,7 @@ int main()
 	8. Weights cuts
 	*/
 	
-	read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
+	/*read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
 	read_success = fscanf(stdin, "%d", &k); //Number of structures 
 	read_success = fscanf(stdin, "%s", &mdfile[0]); //Prior weights
 	read_success = fscanf(stdin, "%d", &N); //Number of SAXS measurments
@@ -354,11 +356,12 @@ int main()
 	read_success = fscanf(stdin, "%s", &outfile[0]); 
 	read_success = fscanf(stdin, "%d", &nprocs); 
 	read_success = fscanf(stdin, "%f", &w_cut); //Weight cutoff
-
+	
 	if (read_success == 0) { 
 		cerr<<"Error reading files"<<std::endl;
 		exit (EXIT_FAILURE);
-	}
+	}*/
+
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
@@ -387,10 +390,10 @@ int main()
 	for (int i = 0; i < k; i++) removed_indexes[i]=false;
 
 	// Read in data from files //
-	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
-	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
-	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
-	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+	FILE * inFile = fopen(presaxsfile.c_str(),"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
+	inFile = fopen(saxsfile.c_str(),"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
+	inFile = fopen(saxserrfile.c_str(),"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
+	inFile = fopen(mdfile.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	cout<<"Files reading finished"<<std::endl;
 	// initialize random number generators //
 	const gsl_rng_type *Krng; 
@@ -683,5 +686,10 @@ int main()
         cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	gsl_rng_free (r);
-	return 0;
+}
+
+int main() {
+
+return 0;
+
 }
