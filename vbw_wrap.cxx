@@ -4450,7 +4450,7 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   std::string *arg3 = 0 ;
   int *arg4 = 0 ;
   std::string *arg5 = 0 ;
-  std::string *arg6 = 0 ;
+  int *arg6 = 0 ;
   std::string *arg7 = 0 ;
   std::string *arg8 = 0 ;
   int *arg9 = 0 ;
@@ -4466,7 +4466,9 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   int val4 ;
   int ecode4 = 0 ;
   int res5 = SWIG_OLDOBJ ;
-  int res6 = SWIG_OLDOBJ ;
+  int temp6 ;
+  int val6 ;
+  int ecode6 = 0 ;
   int res7 = SWIG_OLDOBJ ;
   int res8 = SWIG_OLDOBJ ;
   int temp9 ;
@@ -4527,17 +4529,12 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
     }
     arg5 = ptr;
   }
-  {
-    std::string *ptr = (std::string *)0;
-    res6 = SWIG_AsPtr_std_string(obj5, &ptr);
-    if (!SWIG_IsOK(res6)) {
-      SWIG_exception_fail(SWIG_ArgError(res6), "in method '" "run_vbw" "', argument " "6"" of type '" "std::string const &""'"); 
-    }
-    if (!ptr) {
-      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "run_vbw" "', argument " "6"" of type '" "std::string const &""'"); 
-    }
-    arg6 = ptr;
-  }
+  ecode6 = SWIG_AsVal_int(obj5, &val6);
+  if (!SWIG_IsOK(ecode6)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "run_vbw" "', argument " "6"" of type '" "int""'");
+  } 
+  temp6 = static_cast< int >(val6);
+  arg6 = &temp6;
   {
     std::string *ptr = (std::string *)0;
     res7 = SWIG_AsPtr_std_string(obj6, &ptr);
@@ -4572,18 +4569,16 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   } 
   temp10 = static_cast< double >(val10);
   arg10 = &temp10;
-  run_vbw((int const &)*arg1,(int const &)*arg2,(std::string const &)*arg3,(int const &)*arg4,(std::string const &)*arg5,(std::string const &)*arg6,(std::string const &)*arg7,(std::string const &)*arg8,(int const &)*arg9,(double const &)*arg10);
+  run_vbw((int const &)*arg1,(int const &)*arg2,(std::string const &)*arg3,(int const &)*arg4,(std::string const &)*arg5,(int const &)*arg6,(std::string const &)*arg7,(std::string const &)*arg8,(int const &)*arg9,(double const &)*arg10);
   resultobj = SWIG_Py_Void();
   if (SWIG_IsNewObj(res3)) delete arg3;
   if (SWIG_IsNewObj(res5)) delete arg5;
-  if (SWIG_IsNewObj(res6)) delete arg6;
   if (SWIG_IsNewObj(res7)) delete arg7;
   if (SWIG_IsNewObj(res8)) delete arg8;
   return resultobj;
 fail:
   if (SWIG_IsNewObj(res3)) delete arg3;
   if (SWIG_IsNewObj(res5)) delete arg5;
-  if (SWIG_IsNewObj(res6)) delete arg6;
   if (SWIG_IsNewObj(res7)) delete arg7;
   if (SWIG_IsNewObj(res8)) delete arg8;
   return NULL;

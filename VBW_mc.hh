@@ -51,5 +51,7 @@ double L_distance(void *xp, void *yp);
 void L_print (void *xp);
 void L_take_step(const gsl_rng * r, void *xp, double step_size);
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
-        const int &N, const std::string &presaxsfile, const std::string &saxsfile, const std::string &saxserrfile,
+        const int &N, const std::string &presaxsfile,
+        const int &Ncurves, const std::string &curvesfile,
         const std::string &outfile, const int &nprocs, const double &w_cut);
+

@@ -29,17 +29,18 @@ if __name__=="__main__":
 	parser.add_option("-n", "--number_of_strcutures", dest="nstruct",default = None,
                       type = 'int',
                       help="Number of strcutural model [OBLIGATORY]")
+	parser.add_option("-m", "--measures", dest="measures",default = None,
+                      type = 'int',
+                      help="Number of measure on which algorithm is evaluated [OBLIGATORY]")
+	parser.add_option("-v", "--number_of_curves", dest="ncurves",default = 1,
+                      type = 'int',
+                      help="Number of strcutural model [OBLIGATORY]")
 	parser.add_option("-p", "--priors", dest="priors",
                       help="Prior weights [OBLIGATORY]")
-        parser.add_option("-k", "--number_of_measurements", dest="measures",default = None,
-                      type = 'int',
-                      help="Number of exp measurements [OBLIGATORY]")
         parser.add_option("-s", "--simulated", dest="simulated",
                       help="Simulated SAXS curves [OBLIGATORY]")
         parser.add_option("-e", "--experimental", dest="experimental",
                       help="Experimental SAXS curves [OBLIGATORY]")
-        parser.add_option("-d", "--delta", dest="errors",
-                      help="Experimental SAXS errors [OBLIGATORY]")
         parser.add_option("-o", "--output", dest="output",
                       help="Output file [OBLIGATORY]")
         parser.add_option("-c", "--cores", dest="nprocs",default = None,
@@ -50,5 +51,5 @@ if __name__=="__main__":
                       help="Weight cutoff [OBLIGATORY]")
 	options, args = parser.parse_args()
 	vbw.run_vbw(options.restart, options.nstruct, options.priors,\
-		options.measures, options.simulated, options.experimental,\
-		options.errors, options.output, options.nprocs, options.weight_cut)
+		options.measures, options.simulated, options.ncurves, options.experimental,\
+		options.output, options.nprocs, options.weight_cut)
