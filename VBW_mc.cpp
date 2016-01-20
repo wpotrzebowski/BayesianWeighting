@@ -202,7 +202,6 @@ double L_function(void *xp)
 
   block *x = (block *) xp;
   //Data imports
-  double saxs_scale = x->saxsScale;
   double monomerMass = x->MonomerMass;
   int nprocs = x->numberProcs;
   size_t Ncurves = x->numberOfCurves;
@@ -218,9 +217,11 @@ double L_function(void *xp)
   }
   //TODO: saxs_ens may not be necessary 
   gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
+  gsl_vector *saxs_scale = (gsl_vector *) (x->saxsScale);
   gsl_vector *oligomeric_species = (gsl_vector *) (x->OligomericSpecies);
   gsl_vector *concentartion = (gsl_vector *) (x->Concentration);
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
+
   gsl_vector *w_current[Ncurves] = gsl_vector_alloc(L);
   size_t N = saxs_exp[0]->size;
   int rep = 0;
@@ -332,6 +333,7 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 */
 void run_vbw(const int &again, const int &k, const std::string &mdfile, 
 	const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
+	const std::string &filelist, const double &monomerMass,
 	const std::string &outfile, const int &nprocs, const double &w_cut)
 {
 	//////////////////// Init section /////////////////////////////////////
@@ -377,9 +379,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 *saxs_ens_current[Mcurves] = gsl_vector_alloc(N);
 
 	gsl_vector *oligomeric_species = gsl_vector_alloc(k);
-        gsl_vector *concentration = gsl_vector_alloc(Ncurves);
-        double monomerMass;
-        int oligomerOrder;
+        gsl_vector *concentrations = gsl_vector_alloc(Ncurves);
+        int oligomerOrder=0;//Maximum value from oligomeric_species + 1 (due to polysolver definition);
 
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	//SAXS file matrix containing q vectors, Intenisty, erros
@@ -398,12 +399,31 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	// Prior file is read //
 	FILE* inFile = fopen(mdfile.c_str(),"r"); gsl_vector_fscanf(inFile,w_current[0]); fclose(inFile);
 	
+	//Reading file list
+	std::ifstream inFileList(filelist.c_str());
+        int list_line = 0;
+	int oligomeric_state;
+	std::string structure_file;
+	while (inFileList >> oligomeric_state >> structure_file) {
+		if (oligomeric_state > oligomerOrder) 
+			oligomerOrder = oligomeric_state;
+		gsl_vector_set(oligomeric_species,list_line,oligomeric_state);
+		list_line++;
+	}	
+	
+	if (list_line != k) {
+                cerr<<"Number of records in file list doesn't agree with sumber of simualted curves"<<std::endl;
+                exit (EXIT_FAILURE);
+        }
+
+	
 	//Experimental SAXS files are read
 	std::ifstream inSAXSfile(curvesfile.c_str());
 	int curves_file_line = 0;
-	float concentartion; 
+	float conc; 
 	std::string saxs_dat_file;
-	while (inSAXSfile >> saxs_dat_file) {
+	while (inSAXSfile >> conc >> saxs_dat_file) {
+		gsl_vector_set(concentrations,curves_file_line,conc);
 		FILE *inSAXSdat = fopen(saxs_dat_file.c_str(),"r");
 		gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix); 
 		for (int i = 0;  i< N; i++) {
@@ -554,7 +574,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		double  *saxs_mix_round =  (double * ) malloc( k * k * sizeof( double )); 
+		gsl_matrix *saxs_mix[Ncurves] = gsl_matrix_alloc(L,L);
 
 		//gsl_matrix *cs_pre_round = gsl_matrix_alloc(n,L);
                 //double  *cs_mix_round =  (double * ) malloc( k * k * sizeof( double ));
@@ -573,18 +593,19 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			}
         	}
 		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
-		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
-                for( int i = 0; i < L; i++) {
-                        for (int j = 0; j < L; j++) {
-				smix = 0.0;
-				//cs_mix = 0.0;
-                                for (int m = 0; m < N; m++) {
-					smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
-        	                }
-	                        saxs_mix_round[i*L+j]=smix;
-                       	}
-		}
-                
+		for (int c=0; c < Ncurves; c++) {
+			#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
+                	for( int i = 0; i < L; i++) {
+                        	for (int j = 0; j < L; j++) {
+					smix = 0.0;
+					//cs_mix = 0.0;
+                                	for (int m = 0; m < N; m++) {
+						smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
+        	                	}
+					gsl_matrix_set(saxs_mix_round[c],i,j,smix);
+                       		}
+			}
+                }
 		//saxs_exp and err_saxs are independent of run
         	simAnBlock->saxsExpPtr = saxs_exp;
         	simAnBlock->saxsErrPtr = err_saxs;
@@ -708,7 +729,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
                	gsl_vector_scale(bayesian_weight1_current,niter);
 
-		free(saxs_mix_round);
+		gsl_matrix_free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
 		if ((overall_iteration-last_updated)>10) {
                         cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
