@@ -2937,12 +2937,11 @@ SWIG_Python_NonDynamicSetAttr(PyObject *obj, PyObject *name, PyObject *value) {
 #define SWIGTYPE_p_block swig_types[0]
 #define SWIGTYPE_p_char swig_types[1]
 #define SWIGTYPE_p_double swig_types[2]
-#define SWIGTYPE_p_gsl_matrix swig_types[3]
-#define SWIGTYPE_p_gsl_rng swig_types[4]
-#define SWIGTYPE_p_gsl_vector swig_types[5]
-#define SWIGTYPE_p_void swig_types[6]
-static swig_type_info *swig_types[8];
-static swig_module_info swig_module = {swig_types, 7, 0, 0, 0, 0};
+#define SWIGTYPE_p_gsl_rng swig_types[3]
+#define SWIGTYPE_p_gsl_vector swig_types[4]
+#define SWIGTYPE_p_void swig_types[5]
+static swig_type_info *swig_types[7];
+static swig_module_info swig_module = {swig_types, 6, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -2955,16 +2954,16 @@ static swig_module_info swig_module = {swig_types, 7, 0, 0, 0, 0};
 #endif
 
 /*-----------------------------------------------
-              @(target):= _vbw.so
+              @(target):= _vbwSC.so
   ------------------------------------------------*/
 #if PY_VERSION_HEX >= 0x03000000
-#  define SWIG_init    PyInit__vbw
+#  define SWIG_init    PyInit__vbwSC
 
 #else
-#  define SWIG_init    init_vbw
+#  define SWIG_init    init_vbwSC
 
 #endif
-#define SWIG_name    "_vbw"
+#define SWIG_name    "_vbwSC"
 
 #define SWIGVERSION 0x020011 
 #define SWIG_VERSION SWIGVERSION
@@ -3043,7 +3042,7 @@ namespace swig {
 
 
   #define SWIG_FILE_WITH_INIT
-  #include "VBW_mc.hh"
+  #include "VBW_sc.hh"
  /* Put header files here or function declarations like below */
  /*extern void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const int &N, const std::string &presaxsfile, const std::string &saxsfile, const std::string &saxserrfile,
@@ -3282,6 +3281,13 @@ SWIG_AsVal_int (PyObject * obj, int *val)
     }
   }  
   return res;
+}
+
+
+SWIGINTERNINLINE PyObject*
+  SWIG_From_int  (int value)
+{
+  return PyInt_FromLong((long) value);
 }
 
 
@@ -3764,10 +3770,11 @@ fail:
 SWIGINTERN PyObject *_wrap_block_saxsScale_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   block *arg1 = (block *) 0 ;
-  void *arg2 = (void *) 0 ;
+  double arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  int res2 ;
+  double val2 ;
+  int ecode2 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   
@@ -3777,10 +3784,11 @@ SWIGINTERN PyObject *_wrap_block_saxsScale_set(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_saxsScale_set" "', argument " "1"" of type '" "block *""'"); 
   }
   arg1 = reinterpret_cast< block * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1,SWIG_as_voidptrptr(&arg2), 0, SWIG_POINTER_DISOWN);
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "block_saxsScale_set" "', argument " "2"" of type '" "void *""'"); 
-  }
+  ecode2 = SWIG_AsVal_double(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_saxsScale_set" "', argument " "2"" of type '" "double""'");
+  } 
+  arg2 = static_cast< double >(val2);
   if (arg1) (arg1)->saxsScale = arg2;
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -3795,7 +3803,7 @@ SWIGINTERN PyObject *_wrap_block_saxsScale_get(PyObject *SWIGUNUSEDPARM(self), P
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyObject * obj0 = 0 ;
-  void *result = 0 ;
+  double result;
   
   if (!PyArg_ParseTuple(args,(char *)"O:block_saxsScale_get",&obj0)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
@@ -3803,8 +3811,8 @@ SWIGINTERN PyObject *_wrap_block_saxsScale_get(PyObject *SWIGUNUSEDPARM(self), P
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_saxsScale_get" "', argument " "1"" of type '" "block *""'"); 
   }
   arg1 = reinterpret_cast< block * >(argp1);
-  result = (void *) ((arg1)->saxsScale);
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
+  result = (double) ((arg1)->saxsScale);
+  resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
 fail:
   return NULL;
@@ -3814,10 +3822,10 @@ fail:
 SWIGINTERN PyObject *_wrap_block_numberProcs_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   block *arg1 = (block *) 0 ;
-  size_t arg2 ;
+  int arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  size_t val2 ;
+  int val2 ;
   int ecode2 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
@@ -3828,11 +3836,11 @@ SWIGINTERN PyObject *_wrap_block_numberProcs_set(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_numberProcs_set" "', argument " "1"" of type '" "block *""'"); 
   }
   arg1 = reinterpret_cast< block * >(argp1);
-  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  ecode2 = SWIG_AsVal_int(obj1, &val2);
   if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_numberProcs_set" "', argument " "2"" of type '" "size_t""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_numberProcs_set" "', argument " "2"" of type '" "int""'");
   } 
-  arg2 = static_cast< size_t >(val2);
+  arg2 = static_cast< int >(val2);
   if (arg1) (arg1)->numberProcs = arg2;
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -3847,7 +3855,7 @@ SWIGINTERN PyObject *_wrap_block_numberProcs_get(PyObject *SWIGUNUSEDPARM(self),
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyObject * obj0 = 0 ;
-  size_t result;
+  int result;
   
   if (!PyArg_ParseTuple(args,(char *)"O:block_numberProcs_get",&obj0)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
@@ -3855,264 +3863,8 @@ SWIGINTERN PyObject *_wrap_block_numberProcs_get(PyObject *SWIGUNUSEDPARM(self),
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_numberProcs_get" "', argument " "1"" of type '" "block *""'"); 
   }
   arg1 = reinterpret_cast< block * >(argp1);
-  result =  ((arg1)->numberProcs);
-  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_OligomericSpecies_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *arg2 = (void *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int res2 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:block_OligomericSpecies_set",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_OligomericSpecies_set" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1,SWIG_as_voidptrptr(&arg2), 0, SWIG_POINTER_DISOWN);
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "block_OligomericSpecies_set" "', argument " "2"" of type '" "void *""'"); 
-  }
-  if (arg1) (arg1)->OligomericSpecies = arg2;
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_OligomericSpecies_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  void *result = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:block_OligomericSpecies_get",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_OligomericSpecies_get" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  result = (void *) ((arg1)->OligomericSpecies);
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_Concentration_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *arg2 = (void *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int res2 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:block_Concentration_set",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_Concentration_set" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1,SWIG_as_voidptrptr(&arg2), 0, SWIG_POINTER_DISOWN);
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "block_Concentration_set" "', argument " "2"" of type '" "void *""'"); 
-  }
-  if (arg1) (arg1)->Concentration = arg2;
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_Concentration_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  void *result = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:block_Concentration_get",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_Concentration_get" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  result = (void *) ((arg1)->Concentration);
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_MonomerMass_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  double arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  double val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:block_MonomerMass_set",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_MonomerMass_set" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  ecode2 = SWIG_AsVal_double(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_MonomerMass_set" "', argument " "2"" of type '" "double""'");
-  } 
-  arg2 = static_cast< double >(val2);
-  if (arg1) (arg1)->MonomerMass = arg2;
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_MonomerMass_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  double result;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:block_MonomerMass_get",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_MonomerMass_get" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  result = (double) ((arg1)->MonomerMass);
-  resultobj = SWIG_From_double(static_cast< double >(result));
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_OligomerOrder_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  size_t arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  size_t val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:block_OligomerOrder_set",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_OligomerOrder_set" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_OligomerOrder_set" "', argument " "2"" of type '" "size_t""'");
-  } 
-  arg2 = static_cast< size_t >(val2);
-  if (arg1) (arg1)->OligomerOrder = arg2;
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_OligomerOrder_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  size_t result;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:block_OligomerOrder_get",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_OligomerOrder_get" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  result =  ((arg1)->OligomerOrder);
-  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_numberOfCurves_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  size_t arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  size_t val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:block_numberOfCurves_set",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_numberOfCurves_set" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_numberOfCurves_set" "', argument " "2"" of type '" "size_t""'");
-  } 
-  arg2 = static_cast< size_t >(val2);
-  if (arg1) (arg1)->numberOfCurves = arg2;
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_numberOfCurves_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  size_t result;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:block_numberOfCurves_get",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_numberOfCurves_get" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  result =  ((arg1)->numberOfCurves);
-  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
+  result = (int) ((arg1)->numberProcs);
+  resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
 fail:
   return NULL;
@@ -4339,73 +4091,13 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_polySolver(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  int arg1 ;
-  double arg2 ;
-  gsl_vector *arg3 = (gsl_vector *) 0 ;
-  gsl_matrix *arg4 = (gsl_matrix *) 0 ;
-  double *arg5 ;
-  int val1 ;
-  int ecode1 = 0 ;
-  double val2 ;
-  int ecode2 = 0 ;
-  void *argp3 = 0 ;
-  int res3 = 0 ;
-  void *argp4 = 0 ;
-  int res4 = 0 ;
-  void *argp5 = 0 ;
-  int res5 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
-  PyObject * obj4 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOOOO:polySolver",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
-  ecode1 = SWIG_AsVal_int(obj0, &val1);
-  if (!SWIG_IsOK(ecode1)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "polySolver" "', argument " "1"" of type '" "int""'");
-  } 
-  arg1 = static_cast< int >(val1);
-  ecode2 = SWIG_AsVal_double(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "polySolver" "', argument " "2"" of type '" "double""'");
-  } 
-  arg2 = static_cast< double >(val2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_gsl_vector, 0 |  0 );
-  if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "polySolver" "', argument " "3"" of type '" "gsl_vector *""'"); 
-  }
-  arg3 = reinterpret_cast< gsl_vector * >(argp3);
-  res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_gsl_matrix, 0 |  0 );
-  if (!SWIG_IsOK(res4)) {
-    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "polySolver" "', argument " "4"" of type '" "gsl_matrix *""'"); 
-  }
-  arg4 = reinterpret_cast< gsl_matrix * >(argp4);
-  res5 = SWIG_ConvertPtr(obj4, &argp5,SWIGTYPE_p_double, 0 |  0 );
-  if (!SWIG_IsOK(res5)) {
-    SWIG_exception_fail(SWIG_ArgError(res5), "in method '" "polySolver" "', argument " "5"" of type '" "double []""'"); 
-  } 
-  arg5 = reinterpret_cast< double * >(argp5);
-  polySolver(arg1,arg2,arg3,arg4,arg5);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_find_poly_root(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_find_square_root(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   gsl_vector *arg1 = (gsl_vector *) 0 ;
   gsl_vector *arg2 = (gsl_vector *) 0 ;
   double arg3 ;
   double arg4 ;
-  double arg5 ;
-  int arg6 ;
-  int arg7 ;
-  gsl_vector *arg8 = (gsl_vector *) 0 ;
+  int arg5 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
@@ -4414,65 +4106,41 @@ SWIGINTERN PyObject *_wrap_find_poly_root(PyObject *SWIGUNUSEDPARM(self), PyObje
   int ecode3 = 0 ;
   double val4 ;
   int ecode4 = 0 ;
-  double val5 ;
+  int val5 ;
   int ecode5 = 0 ;
-  int val6 ;
-  int ecode6 = 0 ;
-  int val7 ;
-  int ecode7 = 0 ;
-  void *argp8 = 0 ;
-  int res8 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
   PyObject * obj3 = 0 ;
   PyObject * obj4 = 0 ;
-  PyObject * obj5 = 0 ;
-  PyObject * obj6 = 0 ;
-  PyObject * obj7 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOO:find_poly_root",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOO:find_square_root",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_gsl_vector, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "find_poly_root" "', argument " "1"" of type '" "gsl_vector *""'"); 
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "find_square_root" "', argument " "1"" of type '" "gsl_vector *""'"); 
   }
   arg1 = reinterpret_cast< gsl_vector * >(argp1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_gsl_vector, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "find_poly_root" "', argument " "2"" of type '" "gsl_vector *""'"); 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "find_square_root" "', argument " "2"" of type '" "gsl_vector *""'"); 
   }
   arg2 = reinterpret_cast< gsl_vector * >(argp2);
   ecode3 = SWIG_AsVal_double(obj2, &val3);
   if (!SWIG_IsOK(ecode3)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "find_poly_root" "', argument " "3"" of type '" "double""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "find_square_root" "', argument " "3"" of type '" "double""'");
   } 
   arg3 = static_cast< double >(val3);
   ecode4 = SWIG_AsVal_double(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "find_poly_root" "', argument " "4"" of type '" "double""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "find_square_root" "', argument " "4"" of type '" "double""'");
   } 
   arg4 = static_cast< double >(val4);
-  ecode5 = SWIG_AsVal_double(obj4, &val5);
+  ecode5 = SWIG_AsVal_int(obj4, &val5);
   if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "find_poly_root" "', argument " "5"" of type '" "double""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "find_square_root" "', argument " "5"" of type '" "int""'");
   } 
-  arg5 = static_cast< double >(val5);
-  ecode6 = SWIG_AsVal_int(obj5, &val6);
-  if (!SWIG_IsOK(ecode6)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "find_poly_root" "', argument " "6"" of type '" "int""'");
-  } 
-  arg6 = static_cast< int >(val6);
-  ecode7 = SWIG_AsVal_int(obj6, &val7);
-  if (!SWIG_IsOK(ecode7)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "find_poly_root" "', argument " "7"" of type '" "int""'");
-  } 
-  arg7 = static_cast< int >(val7);
-  res8 = SWIG_ConvertPtr(obj7, &argp8,SWIGTYPE_p_gsl_vector, 0 |  0 );
-  if (!SWIG_IsOK(res8)) {
-    SWIG_exception_fail(SWIG_ArgError(res8), "in method '" "find_poly_root" "', argument " "8"" of type '" "gsl_vector *""'"); 
-  }
-  arg8 = reinterpret_cast< gsl_vector * >(argp8);
-  find_poly_root(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8);
+  arg5 = static_cast< int >(val5);
+  find_square_root(arg1,arg2,arg3,arg4,arg5);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -4700,10 +4368,8 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   int *arg6 = 0 ;
   std::string *arg7 = 0 ;
   std::string *arg8 = 0 ;
-  double *arg9 = 0 ;
-  std::string *arg10 = 0 ;
-  int *arg11 = 0 ;
-  double *arg12 = 0 ;
+  int *arg9 = 0 ;
+  double *arg10 = 0 ;
   int temp1 ;
   int val1 ;
   int ecode1 = 0 ;
@@ -4720,16 +4386,12 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   int ecode6 = 0 ;
   int res7 = SWIG_OLDOBJ ;
   int res8 = SWIG_OLDOBJ ;
-  double temp9 ;
-  double val9 ;
+  int temp9 ;
+  int val9 ;
   int ecode9 = 0 ;
-  int res10 = SWIG_OLDOBJ ;
-  int temp11 ;
-  int val11 ;
-  int ecode11 = 0 ;
-  double temp12 ;
-  double val12 ;
-  int ecode12 = 0 ;
+  double temp10 ;
+  double val10 ;
+  int ecode10 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -4740,10 +4402,8 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   PyObject * obj7 = 0 ;
   PyObject * obj8 = 0 ;
   PyObject * obj9 = 0 ;
-  PyObject * obj10 = 0 ;
-  PyObject * obj11 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOOO:run_vbw",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10,&obj11)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOO:run_vbw",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9)) SWIG_fail;
   ecode1 = SWIG_AsVal_int(obj0, &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "run_vbw" "', argument " "1"" of type '" "int""'");
@@ -4812,49 +4472,30 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
     }
     arg8 = ptr;
   }
-  ecode9 = SWIG_AsVal_double(obj8, &val9);
+  ecode9 = SWIG_AsVal_int(obj8, &val9);
   if (!SWIG_IsOK(ecode9)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode9), "in method '" "run_vbw" "', argument " "9"" of type '" "double""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode9), "in method '" "run_vbw" "', argument " "9"" of type '" "int""'");
   } 
-  temp9 = static_cast< double >(val9);
+  temp9 = static_cast< int >(val9);
   arg9 = &temp9;
-  {
-    std::string *ptr = (std::string *)0;
-    res10 = SWIG_AsPtr_std_string(obj9, &ptr);
-    if (!SWIG_IsOK(res10)) {
-      SWIG_exception_fail(SWIG_ArgError(res10), "in method '" "run_vbw" "', argument " "10"" of type '" "std::string const &""'"); 
-    }
-    if (!ptr) {
-      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "run_vbw" "', argument " "10"" of type '" "std::string const &""'"); 
-    }
-    arg10 = ptr;
-  }
-  ecode11 = SWIG_AsVal_int(obj10, &val11);
-  if (!SWIG_IsOK(ecode11)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode11), "in method '" "run_vbw" "', argument " "11"" of type '" "int""'");
+  ecode10 = SWIG_AsVal_double(obj9, &val10);
+  if (!SWIG_IsOK(ecode10)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode10), "in method '" "run_vbw" "', argument " "10"" of type '" "double""'");
   } 
-  temp11 = static_cast< int >(val11);
-  arg11 = &temp11;
-  ecode12 = SWIG_AsVal_double(obj11, &val12);
-  if (!SWIG_IsOK(ecode12)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode12), "in method '" "run_vbw" "', argument " "12"" of type '" "double""'");
-  } 
-  temp12 = static_cast< double >(val12);
-  arg12 = &temp12;
-  run_vbw((int const &)*arg1,(int const &)*arg2,(std::string const &)*arg3,(int const &)*arg4,(std::string const &)*arg5,(int const &)*arg6,(std::string const &)*arg7,(std::string const &)*arg8,(double const &)*arg9,(std::string const &)*arg10,(int const &)*arg11,(double const &)*arg12);
+  temp10 = static_cast< double >(val10);
+  arg10 = &temp10;
+  run_vbw((int const &)*arg1,(int const &)*arg2,(std::string const &)*arg3,(int const &)*arg4,(std::string const &)*arg5,(int const &)*arg6,(std::string const &)*arg7,(std::string const &)*arg8,(int const &)*arg9,(double const &)*arg10);
   resultobj = SWIG_Py_Void();
   if (SWIG_IsNewObj(res3)) delete arg3;
   if (SWIG_IsNewObj(res5)) delete arg5;
   if (SWIG_IsNewObj(res7)) delete arg7;
   if (SWIG_IsNewObj(res8)) delete arg8;
-  if (SWIG_IsNewObj(res10)) delete arg10;
   return resultobj;
 fail:
   if (SWIG_IsNewObj(res3)) delete arg3;
   if (SWIG_IsNewObj(res5)) delete arg5;
   if (SWIG_IsNewObj(res7)) delete arg7;
   if (SWIG_IsNewObj(res8)) delete arg8;
-  if (SWIG_IsNewObj(res10)) delete arg10;
   return NULL;
 }
 
@@ -4879,16 +4520,6 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"block_saxsScale_get", _wrap_block_saxsScale_get, METH_VARARGS, NULL},
 	 { (char *)"block_numberProcs_set", _wrap_block_numberProcs_set, METH_VARARGS, NULL},
 	 { (char *)"block_numberProcs_get", _wrap_block_numberProcs_get, METH_VARARGS, NULL},
-	 { (char *)"block_OligomericSpecies_set", _wrap_block_OligomericSpecies_set, METH_VARARGS, NULL},
-	 { (char *)"block_OligomericSpecies_get", _wrap_block_OligomericSpecies_get, METH_VARARGS, NULL},
-	 { (char *)"block_Concentration_set", _wrap_block_Concentration_set, METH_VARARGS, NULL},
-	 { (char *)"block_Concentration_get", _wrap_block_Concentration_get, METH_VARARGS, NULL},
-	 { (char *)"block_MonomerMass_set", _wrap_block_MonomerMass_set, METH_VARARGS, NULL},
-	 { (char *)"block_MonomerMass_get", _wrap_block_MonomerMass_get, METH_VARARGS, NULL},
-	 { (char *)"block_OligomerOrder_set", _wrap_block_OligomerOrder_set, METH_VARARGS, NULL},
-	 { (char *)"block_OligomerOrder_get", _wrap_block_OligomerOrder_get, METH_VARARGS, NULL},
-	 { (char *)"block_numberOfCurves_set", _wrap_block_numberOfCurves_set, METH_VARARGS, NULL},
-	 { (char *)"block_numberOfCurves_get", _wrap_block_numberOfCurves_get, METH_VARARGS, NULL},
 	 { (char *)"new_block", _wrap_new_block, METH_VARARGS, NULL},
 	 { (char *)"delete_block", _wrap_delete_block, METH_VARARGS, NULL},
 	 { (char *)"block_swigregister", block_swigregister, METH_VARARGS, NULL},
@@ -4899,8 +4530,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"block_destroy", _wrap_block_destroy, METH_VARARGS, NULL},
 	 { (char *)"ientropy", _wrap_ientropy, METH_VARARGS, NULL},
 	 { (char *)"jensen_shannon_div", _wrap_jensen_shannon_div, METH_VARARGS, NULL},
-	 { (char *)"polySolver", _wrap_polySolver, METH_VARARGS, NULL},
-	 { (char *)"find_poly_root", _wrap_find_poly_root, METH_VARARGS, NULL},
+	 { (char *)"find_square_root", _wrap_find_square_root, METH_VARARGS, NULL},
 	 { (char *)"SaxsScaleMean", _wrap_SaxsScaleMean, METH_VARARGS, NULL},
 	 { (char *)"SaxsScaleStandardDeviation", _wrap_SaxsScaleStandardDeviation, METH_VARARGS, NULL},
 	 { (char *)"L_function", _wrap_L_function, METH_VARARGS, NULL},
@@ -4917,7 +4547,6 @@ static PyMethodDef SwigMethods[] = {
 static swig_type_info _swigt__p_block = {"_p_block", "block *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_char = {"_p_char", "char *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_double = {"_p_double", "double *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_gsl_matrix = {"_p_gsl_matrix", "gsl_matrix *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_gsl_rng = {"_p_gsl_rng", "gsl_rng *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_gsl_vector = {"_p_gsl_vector", "gsl_vector *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_void = {"_p_void", "void *", 0, 0, (void*)0, 0};
@@ -4926,7 +4555,6 @@ static swig_type_info *swig_type_initial[] = {
   &_swigt__p_block,
   &_swigt__p_char,
   &_swigt__p_double,
-  &_swigt__p_gsl_matrix,
   &_swigt__p_gsl_rng,
   &_swigt__p_gsl_vector,
   &_swigt__p_void,
@@ -4935,7 +4563,6 @@ static swig_type_info *swig_type_initial[] = {
 static swig_cast_info _swigc__p_block[] = {  {&_swigt__p_block, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_double[] = {  {&_swigt__p_double, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_gsl_matrix[] = {  {&_swigt__p_gsl_matrix, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_gsl_rng[] = {  {&_swigt__p_gsl_rng, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_gsl_vector[] = {  {&_swigt__p_gsl_vector, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_void[] = {  {&_swigt__p_void, 0, 0, 0},{0, 0, 0, 0}};
@@ -4944,7 +4571,6 @@ static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_block,
   _swigc__p_char,
   _swigc__p_double,
-  _swigc__p_gsl_matrix,
   _swigc__p_gsl_rng,
   _swigc__p_gsl_vector,
   _swigc__p_void,

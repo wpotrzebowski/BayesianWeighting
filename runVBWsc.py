@@ -11,7 +11,7 @@ __email__ = "Wojciech.Potrzebowski@biochemistry.lu.se"
 import optparse
 import os
 import sys
-import vbw
+import vbwSC
 
 if __name__=="__main__":
 	doc = """
@@ -50,6 +50,6 @@ if __name__=="__main__":
                       type = 'float',
                       help="Weight cutoff [OBLIGATORY]")
 	options, args = parser.parse_args()
-	vbw.run_vbw(options.restart, options.nstruct, options.priors,\
+	vbwSC.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.measures, options.simulated, options.ncurves, options.experimental,\
 		options.output, options.nprocs, options.weight_cut)

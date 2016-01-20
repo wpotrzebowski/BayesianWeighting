@@ -1,8 +1,7 @@
-./BW_MC
+*.pyc
 ./VBW_mc.o
 ./_vbw.so
 ./vbw.py
-./vbw.pyc
 ./vbw_wrap.cxx
 ./vbw_wrap.o
 ./.git/hooks/applypatch-msg.sample

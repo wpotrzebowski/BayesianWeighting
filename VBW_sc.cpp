@@ -260,20 +260,13 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 2. Run simulated anealing to minimize function 
 3. Iteratively remove structures with weights lower than wcut
 */
-int main()
+void run_vbw(const int &again, const int &k, const std::string &mdfile,
+        const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
+        const std::string &outfile, const int &nprocs, const double &w_cut)
 {
 	//////////////////// Init section /////////////////////////////////////
-	int n,k,nprocs,again=0;
 	double saxs_scale_current;
-	float w_cut;
-	char mdfile[80], outfile[80];
-	int N; 
-	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
-	//csrmsfile corresponds to SHIFTX2 rms
-	//cserrfile contains data for experimental measurements
-	//char precsfile[80], csfile[80], csrmsfile[80], cserrfile[80];
 	double wdelta = 0.0001;	
-	int read_success =0;
 
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
@@ -284,46 +277,26 @@ int main()
         double MU_T;
         double T_MIN;
 
-	read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
-	read_success = fscanf(stdin, "%d", &k); //Number of structures 
-	read_success = fscanf(stdin, "%s", &mdfile[0]); //Prior weights
-	read_success = fscanf(stdin, "%d", &N); //Number of SAXS measurments
-	read_success = fscanf(stdin, "%s", &presaxsfile[0]); //Theoretical SAXS curves
-	read_success = fscanf(stdin, "%s", &saxsfile[0]); //Experimental SAXS files
-	read_success = fscanf(stdin, "%s", &saxserrfile[0]); //Experimental Errors
-
-	read_success = fscanf(stdin, "%s", &outfile[0]); 
-	read_success = fscanf(stdin, "%d", &nprocs); 
-	read_success = fscanf(stdin, "%f", &w_cut); //Weight cutoff
-
-	if (read_success == 0) { 
-		cerr<<"Error reading files"<<std::endl;
-		exit (EXIT_FAILURE);
-	}
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
 	//double *cs_mix;
 	float acceptance_rate = 1.0;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
-	//cs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
+	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
-		//*cs_exp = gsl_vector_alloc(n),
-                //*cs_err = gsl_vector_alloc(n),
-		//*cs_rms = gsl_vector_alloc(n),
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
 		*tostart = gsl_vector_alloc(k+2),
 		*saxs_ens_current = gsl_vector_alloc(N),
-		//*cs_ens_current = gsl_vector_alloc(N),
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
                 *bayesian_weight1_current = gsl_vector_alloc(k);
-
+	
 	gsl_vector_set_zero(bayesian_weight1);
 	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
 	int samples = 500;
@@ -334,14 +307,18 @@ int main()
 	for (int i = 0; i < k; i++) removed_indexes[i]=false;
 
 	// Read in data from files //
-	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
-	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
-	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
-	//inFile = fopen(precsfile,"r"); gsl_matrix_fscanf(inFile,cs_pre);fclose(inFile);
-        //inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
-        //inFile = fopen(cserrfile,"r"); gsl_vector_fscanf(inFile,cs_err); fclose(inFile);
-	//inFile = fopen(csrmsfile,"r"); gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
-	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+	FILE * inFile = fopen(presaxsfile.c_str(),"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
+	//Read prior files
+	inFile = fopen(mdfile.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+	//Read scattering file
+        FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
+        gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
+        for (int i = 0;  i< N; i++) {
+       		gsl_vector_set(saxs_exp,i,gsl_matrix_get(saxs_file_matrix,i,1));
+       		gsl_vector_set(err_saxs,i,gsl_matrix_get(saxs_file_matrix,i,2));
+       	}
+       	fclose(inSAXSdat);
+	
 	cout<<"Files reading finished"<<std::endl;
 	// initialize random number generators //
 	const gsl_rng_type *Krng; 
@@ -469,10 +446,8 @@ int main()
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		double  *saxs_mix_round =  (double * ) malloc( k * k * sizeof( double )); 
+		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double )); 
 
-		//gsl_matrix *cs_pre_round = gsl_matrix_alloc(n,L);
-                //double  *cs_mix_round =  (double * ) malloc( k * k * sizeof( double ));
 
 		l = 0;
 		for (int i = 0; i < k; i++) {
@@ -480,9 +455,6 @@ int main()
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
-				//for (int j = 0; j < n; j++) {
-                                //        gsl_matrix_set(cs_pre_round,j,l,gsl_matrix_get(cs_pre,j,i));
-                                //}
                 		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
@@ -492,15 +464,10 @@ int main()
                 for( int i = 0; i < L; i++) {
                         for (int j = 0; j < L; j++) {
 				smix = 0.0;
-				//cs_mix = 0.0;
                                 for (int m = 0; m < N; m++) {
 					smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
         	                }
-				/*for (int m = 0; m < n; m++) {
-                                        cs_mix+=gsl_matrix_get(cs_pre_round,m,i)*gsl_matrix_get(cs_pre_round,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
-                                }*/
 	                        saxs_mix_round[i*L+j]=smix;
-				//cs_mix_round[i*L+j]=cs_mix;
                        	}
 		}
                 
@@ -511,13 +478,6 @@ int main()
         	simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
-
-		/*simAnBlock->csExpPtr = cs_exp;
-                simAnBlock->csErrPtr = cs_err;
-		simAnBlock->csRmsPtr = cs_rms;
-                simAnBlock->csPrePtr = cs_pre_round;
-                simAnBlock->csMixPtr = cs_mix_round;
-                simAnBlock->csEnsPtr = cs_ens_current;*/
 
 		simAnBlock->numberProcs = nprocs;	
 		
@@ -631,8 +591,6 @@ int main()
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
-		//free(cs_mix_round);
-                //gsl_matrix_free(cs_pre_round);
 		if ((overall_iteration-last_updated)>10) {
                         cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
                         break;
@@ -660,5 +618,4 @@ int main()
         cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	gsl_rng_free (r);
-	return 0;
 }

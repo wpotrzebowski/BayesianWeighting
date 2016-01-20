@@ -25,8 +25,13 @@ typedef struct {
         void *saxsEnsPtr;
         void *saxsPrePtr;
         void *saxsMixPtr;
-        double saxsScale;
-        int numberProcs;
+        void *saxsScale;
+        size_t numberProcs;
+	void *OligomericSpecies;
+        void *Concentration;
+        double MonomerMass;
+        size_t OligomerOrder;
+	size_t numberOfCurves;
         } block;
 
 block * block_alloc(size_t n);

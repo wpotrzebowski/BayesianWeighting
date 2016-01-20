@@ -102,6 +102,21 @@ class block(_object):
     __swig_setmethods__["numberProcs"] = _vbw.block_numberProcs_set
     __swig_getmethods__["numberProcs"] = _vbw.block_numberProcs_get
     if _newclass:numberProcs = _swig_property(_vbw.block_numberProcs_get, _vbw.block_numberProcs_set)
+    __swig_setmethods__["OligomericSpecies"] = _vbw.block_OligomericSpecies_set
+    __swig_getmethods__["OligomericSpecies"] = _vbw.block_OligomericSpecies_get
+    if _newclass:OligomericSpecies = _swig_property(_vbw.block_OligomericSpecies_get, _vbw.block_OligomericSpecies_set)
+    __swig_setmethods__["Concentration"] = _vbw.block_Concentration_set
+    __swig_getmethods__["Concentration"] = _vbw.block_Concentration_get
+    if _newclass:Concentration = _swig_property(_vbw.block_Concentration_get, _vbw.block_Concentration_set)
+    __swig_setmethods__["MonomerMass"] = _vbw.block_MonomerMass_set
+    __swig_getmethods__["MonomerMass"] = _vbw.block_MonomerMass_get
+    if _newclass:MonomerMass = _swig_property(_vbw.block_MonomerMass_get, _vbw.block_MonomerMass_set)
+    __swig_setmethods__["OligomerOrder"] = _vbw.block_OligomerOrder_set
+    __swig_getmethods__["OligomerOrder"] = _vbw.block_OligomerOrder_get
+    if _newclass:OligomerOrder = _swig_property(_vbw.block_OligomerOrder_get, _vbw.block_OligomerOrder_set)
+    __swig_setmethods__["numberOfCurves"] = _vbw.block_numberOfCurves_set
+    __swig_getmethods__["numberOfCurves"] = _vbw.block_numberOfCurves_get
+    if _newclass:numberOfCurves = _swig_property(_vbw.block_numberOfCurves_get, _vbw.block_numberOfCurves_set)
     def __init__(self): 
         this = _vbw.new_block()
         try: self.this.append(this)
