@@ -207,36 +207,29 @@ double L_function(void *xp)
   size_t Ncurves = x->numberOfCurves;
   size_t oligoOrder = x->OligomerOrder;
   size_t L = x->size;
-  
   double fit_saxs=0.0, fit_saxs_mix=0.0;
-  gsl_vector *saxs_exp[Ncurves];
-  gsl_vector *err_saxs[Ncurves];
-  gsl_matrix *mix_saxs[Ncurves]; 	
-  gsl_vector *w_current[Ncurves]; 
-  *saxs_exp = (gsl_vector *) ( x->saxsExpPtr);
-  *err_saxs = (gsl_vector *) ( x->saxsErrPtr);
-  *mix_saxs = (gsl_matrix *) (x->saxsMixPtr);
+
+  gsl_vector *w_current[Ncurves];
   for (int i=0; i<Ncurves; i++) {
 	w_current[i] = gsl_vector_alloc(L);
-  	//saxs_exp[i] = (gsl_vector *) ( x->saxsExpPtr[i]);
-  	//err_saxs[i] = (gsl_vector *) ( x->saxsErrPtr[i]);
-	//mix_saxs[i] = (gsl_matrix *) ( x->saxsMixPtr[i]);
   }
-  
-  //TODO: saxs_ens may not be necessary 
+
+  //TODO: saxs_ens may not be necessary
+  double *mix_saxs = (double *) ( x->saxsMixPtr );
+  gsl_matrix *saxs_exp = (gsl_matrix *) ( x->saxsExpPtr );
+  gsl_matrix *err_saxs = (gsl_matrix *) ( x->saxsErrPtr ); 
   gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
   gsl_vector *saxs_scale = (gsl_vector *) (x->saxsScale);
   gsl_vector *oligomeric_species = (gsl_vector *) (x->OligomericSpecies);
   gsl_vector *concentration = (gsl_vector *) (x->Concentration);
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
-
-  size_t N = saxs_exp[0]->size;
+  size_t N = saxs_exp->size1;
   int rep = 0;
   double alpha_zero = 0.0;
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0;
-  
+ 
   for (int i = 0; i < L; i++) {
 	  alpha_zero+=x->alphas[i];
   }
@@ -262,7 +255,7 @@ double L_function(void *xp)
 			//alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
 			alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*gsl_vector_get(w_current[l],k)*alpha_zero;
 		}
-		fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp[l],i), 2) / pow(gsl_vector_get(err_saxs[l],i),2) );
+		fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_matrix_get(saxs_exp,i,l), 2) / pow(gsl_matrix_get(err_saxs,i,l),2) );
   	}
    
 
@@ -271,7 +264,7 @@ double L_function(void *xp)
    
   	//gettimeofday(&t1, NULL);
  	 #pragma omp parallel for \
-  	default(none) shared(L,l,x,mix_saxs,alpha_zero, w_current)\
+  	default(none) shared(Ncurves,L,l,x,mix_saxs,alpha_zero, w_current)\
   	private (i_ind, j_ind, smix, deltamix) \
   	num_threads(nprocs) \
   	schedule(dynamic,16) \
@@ -279,7 +272,7 @@ double L_function(void *xp)
 
   	for(i_ind = 0; i_ind < L; i_ind++) {
   		for ( j_ind = i_ind; j_ind < L; j_ind++) {
-			smix = gsl_matrix_get(mix_saxs[l],i_ind,j_ind);
+			smix = mix_saxs[ Ncurves*L*l + L*i_ind + j_ind ];
 			deltamix = (i_ind!=j_ind) ? -2*gsl_vector_get(w_current[l],i_ind)*alpha_zero*gsl_vector_get(w_current[l],j_ind)*alpha_zero \
 				: gsl_vector_get(w_current[l],i_ind)*alpha_zero*(alpha_zero - gsl_vector_get(w_current[l],i_ind)*alpha_zero);
 			//deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
@@ -380,10 +373,14 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
                 *bayesian_weight1_current = gsl_vector_alloc(k);
+	
+	gsl_matrix *saxs_exp = gsl_matrix_alloc(N,Ncurves),
+                *err_saxs = gsl_matrix_alloc(N,Ncurves);
+	
+	gsl_vector *saxs_exp_vec = gsl_vector_alloc(N),
+                *err_saxs_vec = gsl_vector_alloc(N);
 
-	gsl_vector *saxs_exp[Ncurves],
-                *err_saxs[Ncurves],
-                *saxs_ens_current[Ncurves];
+	gsl_vector *saxs_ens_current[Ncurves];
 
 	gsl_vector *oligomeric_species = gsl_vector_alloc(k);
         gsl_vector *concentrations = gsl_vector_alloc(Ncurves);
@@ -392,15 +389,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	//SAXS file matrix containing q vectors, Intenisty, erros
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
-	gsl_matrix *saxs_mix[Ncurves];
+	double *saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));;
 
 	for (int i = 0; i < Ncurves; i++) {
 		w_current[i] = gsl_vector_alloc(k);
 		w_ens_current[i] = gsl_vector_alloc(k);	
-		saxs_exp[i] = gsl_vector_alloc(N);
-		err_saxs[i] = gsl_vector_alloc(N);
 		saxs_ens_current[i] = gsl_vector_alloc(N);
-		saxs_mix[i] = gsl_matrix_alloc(k,k);	
 	}
 	gsl_vector_set_zero(bayesian_weight1);
 	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
@@ -413,7 +407,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	// Prior file is read //
 	FILE* inFile = fopen(mdfile.c_str(),"r"); gsl_vector_fscanf(inFile,w_current[0]); fclose(inFile);
-	
+	cout<<"Loaded priors"<<std::endl;	
 	//Reading file list
 	std::ifstream inFileList(filelist.c_str());
         int list_line = 0;
@@ -431,7 +425,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 exit (EXIT_FAILURE);
         }
 
-	
+	cout<<"Loaded file list"<<std::endl;	
 	//Experimental SAXS files are read
 	std::ifstream inSAXSfile(curvesfile.c_str());
 	int curves_file_line = 0;
@@ -442,8 +436,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		FILE *inSAXSdat = fopen(saxs_dat_file.c_str(),"r");
 		gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix); 
 		for (int i = 0;  i< N; i++) {
-			gsl_vector_set(saxs_exp[curves_file_line],i,gsl_matrix_get(saxs_file_matrix,i,1));
-			gsl_vector_set(err_saxs[curves_file_line],i,gsl_matrix_get(saxs_file_matrix,i,2));
+			gsl_matrix_set(saxs_exp,i,curves_file_line,gsl_matrix_get(saxs_file_matrix,i,1));
+			gsl_matrix_set(err_saxs,i,curves_file_line,gsl_matrix_get(saxs_file_matrix,i,2));
 		} 
 		fclose(inSAXSdat);
 		curves_file_line++;
@@ -455,6 +449,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		exit (EXIT_FAILURE);
 	}	
 
+	cout<<"Loaded experimental file"<<std::endl;
 	//Simulated SAXS data is read
 	//TODO: The assumption is that the number of points is the same all experimental ana simulated	
 	inFile = fopen(presaxsfile.c_str(),"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
@@ -482,8 +477,11 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	simAnBlock->numberProcs = nprocs;
 	simAnBlock->numberOfCurves = Ncurves;
 	for (int i=0; i<Ncurves; i++) {
+		*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
+		*err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current[i], 0.0, saxs_ens_current[i]);
-		gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],saxs_exp[i],err_saxs[i],N));
+		gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
+			saxs_exp_vec, err_saxs_vec ,N));
 	}
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
@@ -508,9 +506,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         		for (int j = 0; j < k; j++) {
 				smix = 0.0;
                 		for (int m = 0; m < N; m++) {
-					smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs[l],m),2);   
+					smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_matrix_get(err_saxs,m,l),2);   
 				}
-                        	gsl_matrix_set(saxs_mix[l],i,j,smix);
+                        	saxs_mix[ Ncurves*k*l + k*i + j ] = smix;
         		}
 		}
 	}
@@ -551,7 +549,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params, &acceptance_rate);
-
+		cout<<"Aftre first Siman"<<std::endl;
 		alpha_zero = 0.0;
 		for (int i=0; i < k; i++) {
 			alpha_zero+=simAnBlock->alphas[i];
@@ -563,8 +561,11 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//TODO: Here weights will be coupled?
 		energy_min = L_function(simAnBlock);
 		for (int i= 0; i < Ncurves; i++) {
-			gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
-			gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],saxs_exp[i],err_saxs[i],N));
+			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
+	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
+        	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current[i], 0.0, saxs_ens_current[i]);
+              		  gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
+                        saxs_exp_vec, err_saxs_vec ,N));
 		}
 		block_destroy(simAnBlock);
 		free(saxs_mix);
@@ -590,11 +591,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		gsl_matrix *saxs_mix_round[Ncurves];
-		for (int c = 0; c < Ncurves; c++)
-			saxs_mix_round[c]   = gsl_matrix_alloc(L,L);
-		//gsl_matrix *cs_pre_round = gsl_matrix_alloc(n,L);
-                //double  *cs_mix_round =  (double * ) malloc( k * k * sizeof( double ));
+		double  *saxs_mix_round =  (double * ) malloc( Ncurves * L * L * sizeof( double ));		
 
 		l = 0;
 		for (int i = 0; i < k; i++) {
@@ -617,9 +614,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 					smix = 0.0;
 					//cs_mix = 0.0;
                                 	for (int m = 0; m < N; m++) {
-						smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs[c],m),2);
+						smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_matrix_get(err_saxs,m,c),2);
         	                	}
-					gsl_matrix_set(saxs_mix_round[c],i,j,smix);
+					saxs_mix_round[ Ncurves*L*c + L*i + j] = smix;
                        		}
 			}
                 }
@@ -709,8 +706,11 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//Stoping simulations if weights don't change for more than delta (0.001)
 		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
 		for ( int i = 0; i < Ncurves; i++ ) {	
-			gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
-	        	gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],saxs_exp[i],err_saxs[i],N));
+			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
+	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
+        	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current[i], 0.0, saxs_ens_current[i]);
+                	gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
+                        	saxs_exp_vec, err_saxs_vec ,N));
 		}
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof

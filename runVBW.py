@@ -49,7 +49,13 @@ if __name__=="__main__":
 	parser.add_option("-w", "--weights", dest="weight_cut",default = None,
                       type = 'float',
                       help="Weight cutoff [OBLIGATORY]")
+	parser.add_option("-d", "--molecular_mass", dest="molecular_mass",default = None,
+                      type = 'float',
+                      help="Molecular ass of monomer [OBLIGATORY]")
+ 	parser.add_option("-f", "--file_list", dest="filelist",default = None,
+                      help="Weight cutoff [OBLIGATORY]")
 	options, args = parser.parse_args()
 	vbw.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.measures, options.simulated, options.ncurves, options.experimental,\
+		options.filelist, options.molecular_mass,
 		options.output, options.nprocs, options.weight_cut)
