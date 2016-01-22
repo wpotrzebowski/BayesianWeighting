@@ -427,6 +427,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	}	
 	//+1 beacuse of poly solver convention
 	oligomerOrder +=1;	
+
 	if (list_line != k) {
                 cerr<<"Number of records in file list doesn't agree with sumber of simualted curves"<<std::endl;
                 exit (EXIT_FAILURE);
@@ -557,6 +558,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params, &acceptance_rate);
+		cout<<"Simulated annealing has finished"<<std::endl;
 		alpha_zero = 0.0;
 		for (int i=0; i < k; i++) {
 			alpha_zero+=simAnBlock->alphas[i];
@@ -564,20 +566,28 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		}
 		for (int i=0; i < k; i++) {
                 	gsl_vector_set(w_ens_current[0],i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
+			cout<<"Vector "<<gsl_vector_get(w_ens_current[0],i)<<std::endl;
         	}
-		//TODO: Here weights will be coupled?
 		energy_min = L_function(simAnBlock);
 		for (int i= 0; i < Ncurves; i++) {
+			cout<<"Finding roots in  "<<i<<std::endl;
+			if ( i > 0 ) { 
+				//TODO: Do it proper - repetition
+				find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
+                		monomerMass, k, oligomerOrder,oligomeric_species);
+			}
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
 	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
-        	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current[i], 0.0, saxs_ens_current[i]);
-              		  gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
+			//TODO: Debug this line
+        	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
+              		gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
                         saxs_exp_vec, err_saxs_vec ,N));
+			cout<<"Scaling2 fails in "<<i<<std::endl;
 		}
 		block_destroy(simAnBlock);
 		free(saxs_mix);
 		/////////////////////////////////////////////////////////////////////
-	
+		cout<<"Alphas have been set"<<std::endl;	
 		//Store alphas after equilibration stage
 		ofstream restart("restart.dat");
         	for(int j = 0; j < k; j++) { restart << gsl_vector_get(alpha_ens_current,j)<<" "; }
@@ -713,9 +723,14 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//Stoping simulations if weights don't change for more than delta (0.001)
 		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
 		for ( int i = 0; i < Ncurves; i++ ) {	
+			if ( i > 0 ) {
+                                //TODO: Do it proper. Also oligomric speciec will have to change
+                                find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
+                                monomerMass, L, oligomerOrder,oligomeric_species);
+                        }
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
 	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
-        	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current[i], 0.0, saxs_ens_current[i]);
+        	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
                 	gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
                         	saxs_exp_vec, err_saxs_vec ,N));
 		}
