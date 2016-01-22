@@ -43,7 +43,7 @@ int order=5;
 double roots[2*(order-1)];
 double coefficents[order];
 
-double ctot1 = 8.0;
+double ctot1 = 16.0;
 //double ctot2 = 0.5;
 double molecularMass = 24.14E+3;
 double cmass_ratio = ctot1/molecularMass;
@@ -71,12 +71,12 @@ gsl_matrix_set(kconsts,0,1,kdsum);
 gsl_matrix_set(kconsts,0,3,ktsum);
 
 polySolver(order,cmass_ratio,oligomeric_species,kconsts,roots);
-
+printf ("Conc = %+.8f \n",ctot1);
 for (int i = 0; i < order-1; i++)
     {
       if ((roots[2*i+1]) == 0.0 && roots[2*i]>0.0) {
-      	printf ("fm%d = %+.18f %+.18f\n",
-              i, roots[2*i], roots[2*i+1]);
+      	printf ("fm%d = %+.18f\n",
+              i, roots[2*i]);
       	printf ("fd%d = %+.18f\n",
               i, 2*kdsum*pow(roots[2*i],2)*cmass_ratio);
       	printf ("ft%d = %+.18f\n",
