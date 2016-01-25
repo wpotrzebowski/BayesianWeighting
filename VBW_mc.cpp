@@ -26,7 +26,7 @@ void block_copy(void *inp, void *outp) {
        	out->size = in->size;
 	out->saxsExpPtr = in->saxsExpPtr;
 	out->saxsErrPtr = in->saxsErrPtr;
-	out->saxsEnsPtr = in->saxsEnsPtr;
+	//out->saxsEnsPtr = in->saxsEnsPtr;
 	out->saxsPrePtr = in->saxsPrePtr;
 	out->saxsMixPtr = in->saxsMixPtr;
        	out->OligomericSpecies = in->OligomericSpecies;
@@ -213,16 +213,16 @@ double L_function(void *xp)
   double *mix_saxs = (double *) ( x->saxsMixPtr );
   gsl_matrix *saxs_exp = (gsl_matrix *) ( x->saxsExpPtr );
   gsl_matrix *err_saxs = (gsl_matrix *) ( x->saxsErrPtr ); 
-  gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
+  //gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
   gsl_vector *saxs_scale = (gsl_vector *) (x->saxsScale);
   gsl_vector *oligomeric_species = (gsl_vector *) (x->OligomericSpecies);
   gsl_vector *concentration = (gsl_vector *) (x->Concentration);
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
   size_t N = saxs_exp->size1;
   size_t L = saxs_pre->size2;
-  gsl_vector *w_current[Ncurves];
+  gsl_vector *w_current = ( gsl_vector * ) malloc (Ncurves *sizeof(gsl_vector));
   for (int i=0; i<Ncurves; i++) {
-        w_current[i] = gsl_vector_alloc(L);
+        *w_current[i] = gsl_vector_alloc(L);
   }
   int rep = 0;
   double alpha_zero = 0.0;
@@ -493,7 +493,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			saxs_exp_vec, err_saxs_vec ,N));
 	}
 	simAnBlock->saxsScale = saxs_scale_current;
-	simAnBlock->saxsEnsPtr = saxs_ens_current;
+	//simAnBlock->saxsEnsPtr = saxs_ens_current;
 
 	simAnBlock->OligomericSpecies = oligomeric_species;
         simAnBlock->Concentration = concentrations;
@@ -570,7 +570,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         	}
 		energy_min = L_function(simAnBlock);
 		for (int i= 0; i < Ncurves; i++) {
-			cout<<"Finding roots in  "<<i<<std::endl;
 			if ( i > 0 ) { 
 				//TODO: Do it proper - repetition
 				find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
@@ -579,11 +578,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
 	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
 			//TODO: Debug this line
+			cout<<"Size "<<saxs_ens_current[i]->size<<std::endl;
         	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
               		gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
                         saxs_exp_vec, err_saxs_vec ,N));
-			cout<<"Scaling2 fails in "<<i<<std::endl;
 		}
+		cout<<"Finding roots's finished"<<std::endl;
 		block_destroy(simAnBlock);
 		free(saxs_mix);
 		/////////////////////////////////////////////////////////////////////
@@ -642,7 +642,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         	simAnBlock->saxsErrPtr = err_saxs;
 		simAnBlock->saxsPrePtr = saxs_pre_round;
         	simAnBlock->saxsMixPtr = saxs_mix_round;
-		simAnBlock->saxsEnsPtr = saxs_ens_current;
+		//simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
 		simAnBlock->numberProcs = nprocs;	
 		simAnBlock->numberOfCurves = Ncurves;
@@ -798,5 +798,14 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	gsl_rng_free (r);
+	for (int i = 0; i < Ncurves; i++) {
+		gsl_vector_free(saxs_ens_current[i]);
+		gsl_vector_free(w_ens_current[i]);
+		gsl_vector_free(w_current[i]);
+	}
+	free(saxs_ens_current);
+	free(w_ens_current);
+	free(w_ens_current);
+
 }
 

@@ -22,7 +22,7 @@ typedef struct {
         double *alphas;
         void *saxsExpPtr;
         void *saxsErrPtr;
-        void *saxsEnsPtr;
+        //void *saxsEnsPtr;
         void *saxsPrePtr;
         void *saxsMixPtr;
         void *saxsScale;

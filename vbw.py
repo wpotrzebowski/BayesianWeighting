@@ -87,9 +87,6 @@ class block(_object):
     __swig_setmethods__["saxsErrPtr"] = _vbw.block_saxsErrPtr_set
     __swig_getmethods__["saxsErrPtr"] = _vbw.block_saxsErrPtr_get
     if _newclass:saxsErrPtr = _swig_property(_vbw.block_saxsErrPtr_get, _vbw.block_saxsErrPtr_set)
-    __swig_setmethods__["saxsEnsPtr"] = _vbw.block_saxsEnsPtr_set
-    __swig_getmethods__["saxsEnsPtr"] = _vbw.block_saxsEnsPtr_get
-    if _newclass:saxsEnsPtr = _swig_property(_vbw.block_saxsEnsPtr_get, _vbw.block_saxsEnsPtr_set)
     __swig_setmethods__["saxsPrePtr"] = _vbw.block_saxsPrePtr_set
     __swig_getmethods__["saxsPrePtr"] = _vbw.block_saxsPrePtr_get
     if _newclass:saxsPrePtr = _swig_property(_vbw.block_saxsPrePtr_get, _vbw.block_saxsPrePtr_set)

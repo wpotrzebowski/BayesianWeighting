@@ -3611,56 +3611,6 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_block_saxsEnsPtr_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *arg2 = (void *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int res2 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:block_saxsEnsPtr_set",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_saxsEnsPtr_set" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1,SWIG_as_voidptrptr(&arg2), 0, SWIG_POINTER_DISOWN);
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "block_saxsEnsPtr_set" "', argument " "2"" of type '" "void *""'"); 
-  }
-  if (arg1) (arg1)->saxsEnsPtr = arg2;
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_block_saxsEnsPtr_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  block *arg1 = (block *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  void *result = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:block_saxsEnsPtr_get",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_saxsEnsPtr_get" "', argument " "1"" of type '" "block *""'"); 
-  }
-  arg1 = reinterpret_cast< block * >(argp1);
-  result = (void *) ((arg1)->saxsEnsPtr);
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_void, 0 |  0 );
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
 SWIGINTERN PyObject *_wrap_block_saxsPrePtr_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   block *arg1 = (block *) 0 ;
@@ -4869,8 +4819,6 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"block_saxsExpPtr_get", _wrap_block_saxsExpPtr_get, METH_VARARGS, NULL},
 	 { (char *)"block_saxsErrPtr_set", _wrap_block_saxsErrPtr_set, METH_VARARGS, NULL},
 	 { (char *)"block_saxsErrPtr_get", _wrap_block_saxsErrPtr_get, METH_VARARGS, NULL},
-	 { (char *)"block_saxsEnsPtr_set", _wrap_block_saxsEnsPtr_set, METH_VARARGS, NULL},
-	 { (char *)"block_saxsEnsPtr_get", _wrap_block_saxsEnsPtr_get, METH_VARARGS, NULL},
 	 { (char *)"block_saxsPrePtr_set", _wrap_block_saxsPrePtr_set, METH_VARARGS, NULL},
 	 { (char *)"block_saxsPrePtr_get", _wrap_block_saxsPrePtr_get, METH_VARARGS, NULL},
 	 { (char *)"block_saxsMixPtr_set", _wrap_block_saxsMixPtr_set, METH_VARARGS, NULL},
