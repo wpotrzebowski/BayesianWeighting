@@ -46,7 +46,7 @@ void block_destroy(void *xp);
 
 double ientropy(const gsl_vector *w, int k);
 double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k);
-void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, gsl_matrix *kconsts,  double roots[]);
+void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, gsl_matrix *kconsts,  double *roots);
 void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double ct_prim,
         double monomerMass, int k, int order, gsl_vector *oligomeric_species );
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N);

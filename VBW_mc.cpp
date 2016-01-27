@@ -6,6 +6,7 @@ const double pi = M_PI;
 block * block_alloc(size_t n) {
         block * t = (block *) malloc(sizeof(block));
         t->alphas = (double *) malloc ((n+1) * sizeof(double));
+	//t->alphas = (double *) malloc ((n) * sizeof(double));
         t->size = n;
         return t;
      	}
@@ -72,7 +73,7 @@ double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 
 
 
-void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, gsl_matrix *kconsts,  double roots[])
+void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, gsl_matrix *kconsts,  double *roots)
 {
 
         /*Constans nomenclature
@@ -81,11 +82,10 @@ void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, g
         k[0]2] = [Tri]/[Mon]
         This will be expressed as monomer and different Ks will have to be recalculated
         */
-        double coefficents[order];
+        double *coefficents = (double * ) malloc( order * sizeof( double ));
         for (int i = 0; i<order; i++) {
                 coefficents[i]=0;
         }
-
 
         //All fractions sum up to 1 (non x element in polynomial equation)
         coefficents[0]=-1;
@@ -97,23 +97,30 @@ void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, g
         }
 
         gsl_poly_complex_workspace * w
-        = gsl_poly_complex_workspace_alloc (order);
-
-        gsl_poly_complex_solve (coefficents, order, w, roots);
-
-        gsl_poly_complex_workspace_free (w);
+        = gsl_poly_complex_workspace_alloc( order );
+        gsl_poly_complex_solve( coefficents, order, w, roots );
+        gsl_poly_complex_workspace_free( w );
+	free( coefficents );
 }
 
+/*void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double ct_prim,
+        double monomerMass, int k, int order, gsl_vector *oligomeric_species )
+{
+	double w_ens_[k];
+	double w_ens_prim_[k];
+	for (int i=0; i < k; i++) w_ens_[i] = gsl_vector_get(w_ens,i);
+	find_poly_root(w_ens, w_ens_prim, ct, ct_prim,monomerMass, k, order, *oligomeric_species )
+	for (int i=0; i < k; i++) w_ens_prim_[i] = gsl_vector_get(w_ens_prim,i);
+}*/
 
-void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double ct_prim, 
+void find_poly_root( gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double ct_prim, 
 	double monomerMass, int k, int order, gsl_vector *oligomeric_species )
 {
 
 	//This fucntion reads in sampled weights and initial concentration and
 	// returns coupled weights given corresponding concentration
 	//order is maximum oligomeric state order
-	double roots[2*(order-1)];
-	double coefficents[order];
+	double *roots = (double * ) malloc( 2*(order-1) * sizeof( double ));
 	//Monomers fraction in initial concentration
 	//OBS!: We assume here that monomer will be first on the strucrture list
 	double fm = gsl_vector_get(w_ens,0);
@@ -124,6 +131,7 @@ void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double
 	double mono_fract;
 	int N;
 	double kN;
+	double w;
 	//Sum of K constants stored for given oligomeric specie
 	gsl_matrix *KSums = gsl_matrix_alloc(order-2,order-1);
 	//K consdtant stored for individual model
@@ -147,7 +155,10 @@ void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double
 		//Oligomeric state says one when there is given state
 		gsl_vector_set(oligomeric_states,N-1,1);
 		mono_fract = N*pow(fm,N); 
-                kN = gsl_vector_get(w_ens,i)*pow(cmass_ratio,N-1)/mono_fract;
+		w =  gsl_vector_get(w_ens,i);
+		//TODO: Will have to something smarter
+		if (w < 0.001 ) w= 0.001;
+                kN = w*pow(cmass_ratio,N-1)/mono_fract;
 		//kconsts are set with the resepect to monomer but it can be generalized
 		gsl_vector_set(KConsts,i-1,kN);
                 gsl_matrix_set(KSums,0,N-1,gsl_matrix_get(KSums,0,N-1)+kN);
@@ -161,17 +172,19 @@ void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double
 	for (int i = 0; i < order-1; i++)
     	{
       		if ((roots[2*i+1]) == 0.0 && roots[2*i]>0.0) {
-			fm_prim = roots[2*i+1];
+			fm_prim = roots[2*i];
 		}
 	}
-	
 	gsl_vector_set(w_ens_prim, 0, fm_prim);
 	for(int i = 1; i < k; i++) {
 		N = gsl_vector_get(oligomeric_species,i);
                 mono_fract = N*pow(fm_prim,N);
 		gsl_vector_set(w_ens_prim,i,gsl_vector_get(KConsts,i-1)*mono_fract*pow(cmass_ratio_prim_inv,N-1));
 	}
-	
+	free(roots);
+	gsl_matrix_free(KSums);
+	gsl_vector_free(KConsts);
+	gsl_vector_free(oligomeric_states);	
 }
 
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N)
@@ -220,14 +233,14 @@ double L_function(void *xp)
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
   size_t N = saxs_exp->size1;
   size_t L = saxs_pre->size2;
-  gsl_vector *w_current = ( gsl_vector * ) malloc (Ncurves *sizeof(gsl_vector));
-  for (int i=0; i<Ncurves; i++) {
-        *w_current[i] = gsl_vector_alloc(L);
-  }
+  //double *w_current = ( double * ) malloc (Ncurves * L * sizeof(double));
+  //double *alpha_l = ( double * ) malloc ( N * sizeof(double));
+  gsl_vector *w_current = gsl_vector_alloc(L);
+  gsl_vector *w_current_prim = gsl_vector_alloc(L);
+  gsl_vector *saxs_weights_ens = gsl_vector_alloc(N);
+  gsl_vector *alpha_l = gsl_vector_alloc(L); 
   int rep = 0;
   double alpha_zero = 0.0;
-  double *alpha_l = (double *) malloc( L * sizeof( double ));
-  gsl_vector *saxs_weights_ens = gsl_vector_alloc(N);
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0;
  
@@ -243,22 +256,27 @@ double L_function(void *xp)
 
   for (int i = 0; i < L; i++) {
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
-  	gsl_vector_set(w_current[0],i,x->alphas[i]/alpha_zero);
+  	gsl_vector_set(w_current,i,x->alphas[i]/alpha_zero);
   }
 
   for( int l = 0; l < Ncurves; l++) {
 	
-	if (l== 0) { 
-		for( int i = 0; i< L; i++) alpha_l[i] = x->alphas[i]; 
+	if (l == 0) { 
+		//for( int i = 0; i< L; i++) alpha_l[i] = x->alphas[i];
+		for( int i = 0; i< L; i++) gsl_vector_set(alpha_l,i, x->alphas[i]);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current, 0.0, saxs_weights_ens); 
 	}
 	else {
-		find_poly_root(w_current[0], w_current[l], gsl_vector_get(concentration,0), gsl_vector_get(concentration,l),
+		find_poly_root(w_current, w_current_prim, gsl_vector_get(concentration,0), gsl_vector_get(concentration,l),
         	monomerMass, L, oligoOrder,oligomeric_species);
 		//alpha_zero is sampled in each concentration 
-		for( int i = 0; i< L; i++) alpha_l[i] = gsl_vector_get(w_current[l],i)*x->alphas[L+l];
+		alpha_zero = x->alphas[L+l-1];
+		//cout<<"Alpha zero for round "<<l<<" "<<alpha_zero<<std::endl;
+		//for( int i = 0; i< L; i++) alpha_l[i] = gsl_vector_get(w_current_prim,i)*alpha_zero;
+		for( int i = 0; i< L; i++) gsl_vector_set(alpha_l,i,gsl_vector_get(w_current_prim,i)*alpha_zero);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current_prim, 0.0, saxs_weights_ens);
 	}
 
-	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_current[l], 0.0, saxs_weights_ens);
 	for (int i = 0; i < N; i++) {
 		fit_saxs += ( pow(gsl_vector_get(saxs_weights_ens,i) - gsl_matrix_get(saxs_exp,i,l), 2) / pow(gsl_matrix_get(err_saxs,i,l),2) );
 	}
@@ -266,16 +284,19 @@ double L_function(void *xp)
   	int i_ind,j_ind;
    
   	//gettimeofday(&t1, NULL);
-  	#pragma omp parallel for \
+  	/*#pragma omp parallel for \
   	default(none) shared(Ncurves, L, l, x, mix_saxs, alpha_l, alpha_zero, w_current)\
   	private (i_ind, j_ind, smix, deltamix) \
   	num_threads(nprocs) \
   	schedule(dynamic,16) \
-  	reduction(+:fit_saxs_mix)
+  	reduction(+:fit_saxs_mix)*/
+
   	for(i_ind = 0; i_ind < L; i_ind++) {
   		for ( j_ind = i_ind; j_ind < L; j_ind++) {
 			smix = mix_saxs[ Ncurves*L*l + L*i_ind + j_ind ];
-			deltamix = (i_ind!=j_ind) ? -2*alpha_l[i_ind]*alpha_l[j_ind] : alpha_l[i_ind]*(alpha_zero - alpha_l[i_ind]);
+			//deltamix = (i_ind!=j_ind) ? -2*alpha_l[i_ind]*alpha_l[j_ind] : alpha_l[i_ind]*(alpha_zero - alpha_l[i_ind]);
+			deltamix = (i_ind!=j_ind) ? -2*gsl_vector_get(alpha_l,i_ind)*gsl_vector_get(alpha_l,j_ind) :\
+				 gsl_vector_get(alpha_l,i_ind)*(alpha_zero - gsl_vector_get(alpha_l,i_ind));
                		fit_saxs_mix += deltamix * smix;
        		}
   	}
@@ -290,9 +311,9 @@ double L_function(void *xp)
   //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
   //cout << "Time: "<< fit_saxs_mix<< " : "<<elapsedTime << " ms."<<std::endl;
   gsl_vector_free(saxs_weights_ens);
-  for (int i = 0; i<Ncurves; i++) 
-  	gsl_vector_free(w_current[i]);
-  free(alpha_l);
+  gsl_vector_free(w_current);
+  gsl_vector_free(w_current_prim);
+  gsl_vector_free(alpha_l);
 
   return Lfunc;
 }
@@ -314,13 +335,22 @@ void L_print (void *xp)
   block *x = (block *) xp;
   double alpha_zero = 0.0;
   double weight; 
-  for(int i=0; i < x->size; i++){
+  size_t Ncurves = x->numberOfCurves;
+  gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
+  size_t L = saxs_pre->size2;
+  for(int i=0; i < L; i++){
   	alpha_zero += x->alphas[i];
   }
-  for(int i=0; i < x->size; i++){
+  cout<<" Weights: ";
+  for(int i=0; i < L; i++){
       weight =  x->alphas[i]/alpha_zero;
+      cout<<weight<<" ";
      //Add vector save here
   }
+  cout<<" Alphas zeros: ";
+  for(int l = 0; l<Ncurves - 1; l++) 
+	cout<<x->alphas[L+l]<<" ";
+  cout<<std::endl;
 }
 
 void L_take_step(const gsl_rng * r, void *xp, double step_size)
@@ -371,22 +401,35 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	double alpha_zero;
 	double energy_current, energy_min;
 	float acceptance_rate = 1.0;
-	gsl_vector *w_current[Ncurves],
-		*w_ens_current[Ncurves],
-		*saxs_scale_current = gsl_vector_alloc(Ncurves), 
+	size_t Ncurvesm1;
+	
+	double *saxs_mix;
+        saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));
+	if (saxs_mix==NULL) { 
+		cerr<<"Cannot allocate memory"<<std::endl;
+		exit(1);
+	}
+	gsl_vector *saxs_scale_current = gsl_vector_alloc(Ncurves), 
 		*alpha_ens_current = gsl_vector_alloc(k),
 		*tostart = gsl_vector_alloc(k+2),
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
                 *bayesian_weight1_current = gsl_vector_alloc(k);
-	
+
+	//Done to satisfy non-zero vector lenght
+	if (Ncurves>1)  Ncurvesm1 = Ncurves-1; 
+	else  Ncurvesm1 = 1;  
+	gsl_vector *alpha_zeros_prim =  gsl_vector_alloc(Ncurvesm1);
+ 
 	gsl_matrix *saxs_exp = gsl_matrix_alloc(N,Ncurves),
                 *err_saxs = gsl_matrix_alloc(N,Ncurves);
 	
 	gsl_vector *saxs_exp_vec = gsl_vector_alloc(N),
                 *err_saxs_vec = gsl_vector_alloc(N);
 
-	gsl_vector *saxs_ens_current[Ncurves];
+	gsl_vector *w_current[Ncurves],
+                *w_ens_current[Ncurves],
+		*saxs_ens_current[Ncurves];
 
 	gsl_vector *oligomeric_species = gsl_vector_alloc(k);
         gsl_vector *concentrations = gsl_vector_alloc(Ncurves);
@@ -395,7 +438,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	//SAXS file matrix containing q vectors, Intenisty, erros
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
-	double *saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));;
 
 	for (int i = 0; i < Ncurves; i++) {
 		w_current[i] = gsl_vector_alloc(k);
@@ -480,6 +522,10 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	for (int i = 0; i < k; i++) {
 		simAnBlock->alphas[i] = gsl_vector_get(w_current[0],i);
 	}
+	//Initializing alphas_zero with 1.0
+	for (int l = 0; l < Ncurves-1; l++) {
+                simAnBlock->alphas[k+l] = 1.0;
+        }
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
@@ -505,12 +551,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//double elapsedTime;
   	//gettimeofday(&t1, NULL);
 
-	//TODO: saxs_mix will have to be an array
+	//double *saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));
 	double smix;
 	//double cs_mix;
         //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs) 	
 	for (int l = 0; l < Ncurves; l++) {
-		#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
+		//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 		for( int i = 0; i< k; i++) {
         		for (int j = 0; j < k; j++) {
 				smix = 0.0;
@@ -558,16 +604,21 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
 		 	block_copy, block_copy_construct, block_destroy,                
                  	0, params, &acceptance_rate);
-		cout<<"Simulated annealing has finished"<<std::endl;
 		alpha_zero = 0.0;
 		for (int i=0; i < k; i++) {
 			alpha_zero+=simAnBlock->alphas[i];
 			gsl_vector_set(alpha_ens_current,i,simAnBlock->alphas[i]);
 		}
+	
+		for (int j=0; j < Ncurves-1; j++) {
+                        gsl_vector_set(alpha_zeros_prim,j,simAnBlock->alphas[k+j]);
+			cout<<"Alphas zeros prim "<< gsl_vector_get(alpha_zeros_prim,j)<<std::endl;;
+                }
+
 		for (int i=0; i < k; i++) {
                 	gsl_vector_set(w_ens_current[0],i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
-			cout<<"Vector "<<gsl_vector_get(w_ens_current[0],i)<<std::endl;
         	}
+		
 		energy_min = L_function(simAnBlock);
 		for (int i= 0; i < Ncurves; i++) {
 			if ( i > 0 ) { 
@@ -577,17 +628,13 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			}
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
 	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
-			//TODO: Debug this line
-			cout<<"Size "<<saxs_ens_current[i]->size<<std::endl;
         	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
               		gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
                         saxs_exp_vec, err_saxs_vec ,N));
 		}
-		cout<<"Finding roots's finished"<<std::endl;
 		block_destroy(simAnBlock);
 		free(saxs_mix);
 		/////////////////////////////////////////////////////////////////////
-		cout<<"Alphas have been set"<<std::endl;	
 		//Store alphas after equilibration stage
 		ofstream restart("restart.dat");
         	for(int j = 0; j < k; j++) { restart << gsl_vector_get(alpha_ens_current,j)<<" "; }
@@ -606,37 +653,35 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	while ( L > 1 ) {
 		cout<<"Starting "<<overall_iteration+1<<" iteration with "<<L<<" models"<<std::endl;
 		
-		block *simAnBlock = block_alloc(L + Ncurves - 1 );
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		double  *saxs_mix_round =  (double * ) malloc( Ncurves * L * L * sizeof( double ));		
-
+                double  *saxs_mix_round =  (double * ) malloc( Ncurves * L * L * sizeof( double ));
+		block *simAnBlock = block_alloc(L + Ncurves - 1 );
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
-				//for (int j = 0; j < n; j++) {
-                                //        gsl_matrix_set(cs_pre_round,j,l,gsl_matrix_get(cs_pre,j,i));
-                                //}
                 		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
         	}
-		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
+		for (int j = 0; j < Ncurves-1; j++) {
+			simAnBlock->alphas[L+j] = gsl_vector_get(alpha_zeros_prim,j);
+		}
 		for (int c=0; c < Ncurves; c++) {
-			#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
+			//#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
                 	for( int i = 0; i < L; i++) {
                         	for (int j = 0; j < L; j++) {
 					smix = 0.0;
-					//cs_mix = 0.0;
                                 	for (int m = 0; m < N; m++) {
 						smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_matrix_get(err_saxs,m,c),2);
         	                	}
-					saxs_mix_round[ Ncurves*L*c + L*i + j] = smix;
+					saxs_mix_round[ Ncurves*L*c + L*i + j ] = smix;
                        		}
 			}
                 }
+		cout<<"Molecular mass"<<monomerMass<<" "<<oligomerOrder<<std::endl;
 		//saxs_exp and err_saxs are independent of run
         	simAnBlock->saxsExpPtr = saxs_exp;
         	simAnBlock->saxsErrPtr = err_saxs;
@@ -650,8 +695,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		simAnBlock->OligomericSpecies = oligomeric_species;
 	        simAnBlock->Concentration = concentrations;
         	simAnBlock->MonomerMass = monomerMass;
-        	simAnBlock->OligomerOrder = oligomerOrder;
-	
+        	simAnBlock->OligomerOrder = oligomerOrder;	
 		////////////////////////Short equilibration period to find step size/////////////////////////
 		N_TRIES = 1;
                 ITERS_FIXED_T = 1000;
@@ -689,6 +733,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                   		block_copy, block_copy_construct, block_destroy, 
                   		0, params, &acceptance_rate);
 
+		cout<<"SimAn finsihed "<<oligomerOrder<<std::endl;
 		energy_current = L_function(simAnBlock);
 
                 //If L_function doesn't improve after 10 iterations exit program
@@ -697,6 +742,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		alpha_zero = 0.0;
 		for ( int i = 0; i < L; i++ ) alpha_zero +=simAnBlock->alphas[i];
 
+		//Sampled alpha zeros are stored here
+		for ( int j = 0; j < Ncurves-1; j++ ) gsl_vector_set(alpha_zeros_prim,j,simAnBlock->alphas[L+j]);
+		
 		double new_alpha_zero = 0.0;
 		for ( int i = 0; i < k; i++ ) {
 			if ( removed_indexes[i]==false ) {
@@ -723,11 +771,14 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//Stoping simulations if weights don't change for more than delta (0.001)
 		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
 		for ( int i = 0; i < Ncurves; i++ ) {	
+			for (int j = 0; j < L; j++) cout<<gsl_vector_get(oligomeric_species,j);
+			cout<<" Concentrations: "<<gsl_vector_get(concentrations,i)<<std::endl;
 			if ( i > 0 ) {
                                 //TODO: Do it proper. Also oligomric speciec will have to change
                                 find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
                                 monomerMass, L, oligomerOrder,oligomeric_species);
                         }
+			for (int j = 0; j < L; j++) cout<<gsl_vector_get(w_ens_current[0],j)<<" "<<gsl_vector_get(w_ens_current[i],j)<<std::endl;
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
 	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
         	        gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
@@ -737,10 +788,10 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof
 		L = newL;
-		
+		cout<<"Before destroy"<<std::endl;
 		block_destroy(simAnBlock);	
 		overall_iteration++;
-	
+		cout<<"After destroy"<<std::endl;	
 		if (energy_current < energy_min) {	
 			energy_min = energy_current;
                         last_updated = overall_iteration;
@@ -770,7 +821,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                	gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
-		gsl_matrix_free(saxs_pre_round);
+                gsl_matrix_free(saxs_pre_round);
+
 		if ((overall_iteration-last_updated)>10) {
                         cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
                         break;
@@ -780,7 +832,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			cout<<"Maximum number of iteration has been reached. Stopping simulation"<<std::endl;
 			break;
 		}
-
+		
 	}	
 	///////////////////////////////////////////////////////////////////////	
 
@@ -806,6 +858,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	free(saxs_ens_current);
 	free(w_ens_current);
 	free(w_ens_current);
+	free(saxs_mix);
 
 }
 

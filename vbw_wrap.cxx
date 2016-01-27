@@ -4295,7 +4295,7 @@ SWIGINTERN PyObject *_wrap_polySolver(PyObject *SWIGUNUSEDPARM(self), PyObject *
   double arg2 ;
   gsl_vector *arg3 = (gsl_vector *) 0 ;
   gsl_matrix *arg4 = (gsl_matrix *) 0 ;
-  double *arg5 ;
+  double *arg5 = (double *) 0 ;
   int val1 ;
   int ecode1 = 0 ;
   double val2 ;
@@ -4335,8 +4335,8 @@ SWIGINTERN PyObject *_wrap_polySolver(PyObject *SWIGUNUSEDPARM(self), PyObject *
   arg4 = reinterpret_cast< gsl_matrix * >(argp4);
   res5 = SWIG_ConvertPtr(obj4, &argp5,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res5)) {
-    SWIG_exception_fail(SWIG_ArgError(res5), "in method '" "polySolver" "', argument " "5"" of type '" "double []""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res5), "in method '" "polySolver" "', argument " "5"" of type '" "double *""'"); 
+  }
   arg5 = reinterpret_cast< double * >(argp5);
   polySolver(arg1,arg2,arg3,arg4,arg5);
   resultobj = SWIG_Py_Void();

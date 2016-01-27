@@ -423,7 +423,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
 		block_destroy(simAnBlock);
-		free(saxs_mix);
+		free(saxs_mix); //TODO: CHeck if these doesn't corrupt memory
 		/////////////////////////////////////////////////////////////////////
 	
 		//Store alphas after equilibration stage
