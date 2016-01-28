@@ -25,8 +25,10 @@ void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, g
         //Setup kconsts matrix
         for (int i = 1; i<order; i++) {
                 //if in equilibrium
-                if ( gsl_vector_get(oligomeric_states,i-1)>0.0 )
+                if ( gsl_vector_get(oligomeric_states,i-1)>0.0 ) {
                         coefficents[i]=i*pow(cmass_ratio,i-1)*gsl_matrix_get(kconsts,0,i-1);
+			cout<<"coeff "<<i<<" "<<coefficents[i]<<" "<<i*pow(cmass_ratio,i-1)*gsl_matrix_get(kconsts,0,i-1)<<std::endl;
+		}
         }
 
         gsl_poly_complex_workspace * w
@@ -74,18 +76,25 @@ void find_poly_root( gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, doubl
         //For monomer monomer is set to 1
         gsl_matrix_set(KSums,0,0,1);
 
-        for(int i = 1; i < k; i++) {
+        for(int i = 0; i < k; i++) {
                 N = gsl_vector_get(oligomeric_species,i);
-                //Oligomeric state says one when there is given state
-                gsl_vector_set(oligomeric_states,N-1,1);
-                mono_fract = N*pow(fm,N);
-                w =  gsl_vector_get(w_ens,i);
-                //TODO: Will have to something smarter
-                //if (w < 0.001 ) w= 0.001;
-                kN = w*pow(cmass_ratio,N-1)/mono_fract;
-                //kconsts are set with the resepect to monomer but it can be generalized
-                gsl_vector_set(KConsts,i-1,kN);
-                gsl_matrix_set(KSums,0,N-1,gsl_matrix_get(KSums,0,N-1)+kN);
+		// Setting monomer
+		if (N == 1) {
+			gsl_vector_set(oligomeric_states,0,1); 
+                }
+		else {
+		//Oligomeric state says one when there is given state
+                	gsl_vector_set(oligomeric_states,N-1,1);
+                	mono_fract = N*pow(fm,N);
+                	w =  gsl_vector_get(w_ens,i);
+                	//TODO: Will have to something smarter
+                	//if (w < 0.001 ) w= 0.001;
+                	kN = w*pow(cmass_ratio,N-1)/mono_fract;
+			cout<<"W, N, K "<<w<<" "<<N<<" "<<kN<<std::endl;
+                	//kconsts are set with the resepect to monomer but it can be generalized
+                	gsl_vector_set(KConsts,i-1,kN);
+                	gsl_matrix_set(KSums,0,N-1,gsl_matrix_get(KSums,0,N-1)+kN);
+		}
         }
 
 	for (int i = 0; i<order-1; i++) {
@@ -97,7 +106,7 @@ void find_poly_root( gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, doubl
         //TODO: What if real non-negative solution is not found?
         for (int i = 0; i < order-1; i++)
         {
-                if ((roots[2*i+1]) == 0.0 && roots[2*i]>0.0 ) {
+                if ((roots[2*i+1]) == 0.0 && roots[2*i]>0.0 && roots[2*i]<1.0) {
                         fm_prim = roots[2*i];
                 }
         }
@@ -128,9 +137,9 @@ gsl_vector *w_ens =  gsl_vector_alloc(3);
 gsl_vector *w_ens_prim =  gsl_vector_alloc(3);
 gsl_vector *oligomeric_species =  gsl_vector_alloc(3);
 
-gsl_vector_set(w_ens,0,0.87);
-gsl_vector_set(w_ens,1,0.12);
-gsl_vector_set(w_ens,2,0.01);
+gsl_vector_set(w_ens,0,0.870351596306203845);
+gsl_vector_set(w_ens,1,0.129599177793127074);
+gsl_vector_set(w_ens,2,0.000049225900666500);
 
 
 gsl_vector_set(oligomeric_species,0,1);
