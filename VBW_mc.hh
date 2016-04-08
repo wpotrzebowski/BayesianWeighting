@@ -32,6 +32,10 @@ typedef struct {
         double MonomerMass;
         size_t OligomerOrder;
 	size_t numberOfCurves;
+	void *saxsWeightsEns;
+	void *wCurrent;
+	void *wCurrentPrim;
+	void *alphaL;
         } block;
 
 block * block_alloc(size_t n);

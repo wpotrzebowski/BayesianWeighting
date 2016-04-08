@@ -43,9 +43,9 @@ int order=5;
 double roots[2*(order-1)];
 double coefficents[order];
 
-double ctot1 = 16.0;
+double ctot1 = 0.25;
 //double ctot2 = 0.5;
-double molecularMass = 24.14E+3;
+double molecularMass = 27.98E+3;
 double cmass_ratio = ctot1/molecularMass;
 double kdsum = 8.26E+3;
 double ktsum = kdsum*kdsum*2.83E+2;
@@ -75,12 +75,12 @@ printf ("Conc = %+.8f \n",ctot1);
 for (int i = 0; i < order-1; i++)
     {
       if ((roots[2*i+1]) == 0.0 && roots[2*i]>0.0) {
-      	printf ("fm%d = %+.18f\n",
-              i, roots[2*i]);
-      	printf ("fd%d = %+.18f\n",
-              i, 2*kdsum*pow(roots[2*i],2)*cmass_ratio);
-      	printf ("ft%d = %+.18f\n",
-              i, 4*ktsum*pow(roots[2*i],4)*pow(cmass_ratio,3));
+      	printf (" %.18f",
+              roots[2*i]);
+      	printf (", %.18f",
+              2*kdsum*pow(roots[2*i],2)*cmass_ratio);
+      	printf (", %.18f\n",
+              4*ktsum*pow(roots[2*i],4)*pow(cmass_ratio,3));
       }
     }
 
