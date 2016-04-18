@@ -272,7 +272,9 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 2. Run simulated anealing to minimize function 
 3. Iteratively remove structures with weights lower than wcut
 */
-int main()
+void run_vbw(const int &again, const int &k, const std::string &mdfile,
+        const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
+        const std::string &outfile, const int &nprocs, const double &w_cut)
 {
 	//////////////////// Init section /////////////////////////////////////
 	int n,k,nprocs,again=0;
@@ -296,7 +298,7 @@ int main()
         double MU_T;
         double T_MIN;
 
-	read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
+	/*read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
 	read_success = fscanf(stdin, "%d", &k); //Number of structures 
 	read_success = fscanf(stdin, "%s", &mdfile[0]); //Prior weights
 	read_success = fscanf(stdin, "%d", &N); //Number of SAXS measurments
@@ -311,6 +313,7 @@ int main()
 	read_success = fscanf(stdin, "%s", &outfile[0]); 
 	read_success = fscanf(stdin, "%d", &nprocs); //Number of processors used to run simulations 
 	read_success = fscanf(stdin, "%f", &w_cut); //Weight cutoff
+	*/
 
 	if (read_success == 0) { 
 		cerr<<"Error reading files"<<std::endl;
