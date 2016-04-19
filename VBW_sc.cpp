@@ -338,9 +338,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
 	//simAnBlock->csExpPtr = cs_exp;
-        //simAnBlock->csErrPtr = cs_err;
+    //simAnBlock->csErrPtr = cs_err;
 	//simAnBlock->csRMSPtr = cs_rms;
-        //simAnBlock->csPrePtr = cs_pre;
+    //simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	// gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
