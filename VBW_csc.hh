@@ -28,6 +28,7 @@ typedef struct {
         double saxsScale;
         void *csExpPtr;
         void *csErrPtr;
+	void *csRmsPtr;
         void *csEnsPtr;
         void *csPrePtr;
         void *csMixPtr;

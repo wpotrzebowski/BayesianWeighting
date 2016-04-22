@@ -1,4 +1,4 @@
-#include "VBW_CS_sc.hh"
+#include "VBW_csc.hh"
 #include "LFuncGpu.hh"
 
 using namespace std;
@@ -27,6 +27,7 @@ void block_copy(void *inp, void *outp) {
        	out->size = in->size;
 	out->saxsExpPtr = in->saxsExpPtr;
 	out->saxsErrPtr = in->saxsErrPtr;
+	out->csRmsPtr = in->csRmsPtr;
 	//TODO: Seems not to be used
 	out->saxsEnsPtr = in->saxsEnsPtr;
 	out->saxsPrePtr = in->saxsPrePtr;
@@ -35,7 +36,6 @@ void block_copy(void *inp, void *outp) {
 	
 	out->csExpPtr = in->csExpPtr;
         out->csErrPtr = in->csErrPtr;
-	out->csRmsPtr = in->csRmsPtr;
 	//TODO: Seems not to be used
         out->csEnsPtr = in->csEnsPtr;
         out->csPrePtr = in->csPrePtr;
