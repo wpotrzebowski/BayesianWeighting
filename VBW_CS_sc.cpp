@@ -273,7 +273,7 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 3. Iteratively remove structures with weights lower than wcut
 */
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
-        const int &N, const int &Ncurves,
+        const int &N, const int &n, const int &Ncurves,
         const std::string &presaxsfile, const std::string &saxsfile,
         const std::string &precsfile, const std::string &csfile,
         const std::string &outfile, const int &nprocs, const double &w_cut)
@@ -301,6 +301,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	cs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *cs_pre = gsl_matrix_alloc(n,k);
+    gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
+    gsl_matrix *cs_file_matrix = gsl_matrix_alloc(n,3);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
@@ -674,5 +676,4 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	gsl_rng_free (r);
-	return 0;
 }
