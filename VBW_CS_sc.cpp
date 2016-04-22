@@ -273,52 +273,25 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 3. Iteratively remove structures with weights lower than wcut
 */
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
-        const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
+        const int &N, const int &n, const int &Ncurves,
+        const std::string &presaxsfile, const std::string &saxsfile,
+        const std::string &precsfile, const std::string &csfile,
         const std::string &outfile, const int &nprocs, const double &w_cut)
 {
 	//////////////////// Init section /////////////////////////////////////
-	int n,k,nprocs,again=0;
 	double saxs_scale_current;
-	float w_cut;
-	char mdfile[80], outfile[80];
-	int N; 
-	char presaxsfile[80], saxsfile[80], saxserrfile[80]; 
-	//csrmsfile corresponds to SHIFTX2 rms
-	//cserrfile contains data for experimental measurements
-	char precsfile[80], csfile[80], csrmsfile[80], cserrfile[80];
-	double wdelta = 0.0001;	
-	int read_success =0;
+	double wdelta = 0.0001;
 
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
-        int ITERS_FIXED_T ;
-        double STEP_SIZE;
-        double K;
-        double T_INITIAL;
-        double MU_T;
-        double T_MIN;
+    	int ITERS_FIXED_T ;
+    	double STEP_SIZE;
+    	double K;
+    	double T_INITIAL;
+    	double MU_T;
+    	double T_MIN;
 
-	/*read_success = fscanf(stdin, "%d", &again); //Should precompuated values be used?
-	read_success = fscanf(stdin, "%d", &k); //Number of structures 
-	read_success = fscanf(stdin, "%s", &mdfile[0]); //Prior weights
-	read_success = fscanf(stdin, "%d", &N); //Number of SAXS measurments
-	read_success = fscanf(stdin, "%d", &n); //Number of CS measurments
-	read_success = fscanf(stdin, "%s", &presaxsfile[0]); //Theoretical SAXS curves
-	read_success = fscanf(stdin, "%s", &saxsfile[0]); //Experimental SAXS files
-	read_success = fscanf(stdin, "%s", &saxserrfile[0]); //Experimental Errors
-	read_success = fscanf(stdin, "%s", &precsfile[0]); //Theoretical CS curves
-        read_success = fscanf(stdin, "%s", &csfile[0]); //Experimental CS files
-        read_success = fscanf(stdin, "%s", &csrmsfile[0]); //Experimental CS Errors
-	read_success = fscanf(stdin, "%s", &cserrfile[0]); //Theoretical CS Errors
-	read_success = fscanf(stdin, "%s", &outfile[0]); 
-	read_success = fscanf(stdin, "%d", &nprocs); //Number of processors used to run simulations 
-	read_success = fscanf(stdin, "%f", &w_cut); //Weight cutoff
-	*/
 
-	if (read_success == 0) { 
-		cerr<<"Error reading files"<<std::endl;
-		exit (EXIT_FAILURE);
-	}
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
@@ -328,11 +301,13 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	cs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *cs_pre = gsl_matrix_alloc(n,k);
+   	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
+    	gsl_matrix *cs_file_matrix = gsl_matrix_alloc(n,3);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
 		*cs_exp = gsl_vector_alloc(n),
-                *cs_err = gsl_vector_alloc(n),
+        	*cs_err = gsl_vector_alloc(n),
 		*cs_rms = gsl_vector_alloc(n),
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
@@ -342,7 +317,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		*cs_ens_current = gsl_vector_alloc(n),
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
-                *bayesian_weight1_current = gsl_vector_alloc(k);
+        	*bayesian_weight1_current = gsl_vector_alloc(k);
 
 	gsl_vector_set_zero(bayesian_weight1);
 	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
@@ -353,16 +328,36 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	bool removed_indexes[k];
 	for (int i = 0; i < k; i++) removed_indexes[i]=false;
 
+    //Read prior files
+	FILE *inFile = fopen(mdfile.c_str(),"r");
+	gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+
 	// Read in data from files //
-	FILE * inFile = fopen(presaxsfile,"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
-	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
-	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
-	inFile = fopen(precsfile,"r"); gsl_matrix_fscanf(inFile,cs_pre);fclose(inFile);
-        inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
-        inFile = fopen(cserrfile,"r"); gsl_vector_fscanf(inFile,cs_err); fclose(inFile);
-	inFile = fopen(csrmsfile,"r"); gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
-	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+    inFile = fopen(presaxsfile.c_str(),"r");
+    gsl_matrix_fscanf(inFile,saxs_pre); fclose(inFile);
+
+    inFile = fopen(precsfile.c_str(),"r");
+    gsl_matrix_fscanf(inFile,cs_pre); fclose(inFile);
+
+	//Read scattering file
+    FILE *inSAXSdat = fopen(saxsfile.c_str(),"r");
+    gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
+    for (int i = 0;  i< N; i++) {
+        gsl_vector_set(saxs_exp,i,gsl_matrix_get(saxs_file_matrix,i,1));
+       	gsl_vector_set(err_saxs,i,gsl_matrix_get(saxs_file_matrix,i,2));
+    }
+    fclose(inSAXSdat);
+
+	FILE *inCSdat = fopen(csfile.c_str(),"r");
+    gsl_matrix_fscanf(inCSdat,cs_file_matrix);
+    for (int i = 0;  i< N; i++) {
+        gsl_vector_set(cs_exp,i,gsl_matrix_get(cs_file_matrix,i,1));
+       	gsl_vector_set(cs_err,i,gsl_matrix_get(cs_file_matrix,i,2));
+    }
+    fclose(inCSdat);
+
 	cout<<"Files reading finished"<<std::endl;
+
 	// initialize random number generators //
 	const gsl_rng_type *Krng; 
 	gsl_rng *r; 
@@ -381,9 +376,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
 	simAnBlock->csExpPtr = cs_exp;
-        simAnBlock->csErrPtr = cs_err;
+    	simAnBlock->csErrPtr = cs_err;
 	simAnBlock->csRmsPtr = cs_rms;
-        simAnBlock->csPrePtr = cs_pre;
+    	simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
@@ -399,7 +394,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	double smix;
 	double csmix;
-        #pragma omp parallel for reduction(+:smix) reduction(+:csmix) num_threads(nprocs) 	
+    	#pragma omp parallel for reduction(+:smix) reduction(+:csmix) num_threads(nprocs)
 	//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 	for( int i = 0; i< k; i++) {
         	for (int j = 0; j < k; j++) {
@@ -681,5 +676,4 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
 	gsl_rng_free (r);
-	return 0;
 }
