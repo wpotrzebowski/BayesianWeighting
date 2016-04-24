@@ -280,6 +280,9 @@ double L_function(void *xp)
 		gsl_blas_dgemv(CblasNoTrans, 1.0/gsl_vector_get(concentration,l), saxs_pre, w_current, 0.0, saxs_weights_ens); 
 	}
 	else {
+		//Find poly root fails when monomer is 0.0 or nearly zero
+		//TODO: Do the active check on the oligomeric state
+		//if (gsl_vector_get(w_current,0) < 0.0000001) continue; 
 		find_poly_root(w_current, w_current_prim, gsl_vector_get(concentration,0), gsl_vector_get(concentration,l),
         	monomerMass, L, oligoOrder,oligomeric_species);
 		//alpha_zero is sampled in each concentration 
@@ -650,6 +653,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		for (int i= 0; i < Ncurves; i++) {
 			if ( i > 0 ) { 
 				//TODO: Do it proper - repetition
+				//if (gsl_vector_get(w_current[0],0) < 0.0000001) continue;
 				find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
                 		monomerMass, k, oligomerOrder,oligomeric_species);
 			}
@@ -801,20 +805,22 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 				gsl_vector_set( w_ens_current[0],i,gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
 			}
 		}
-		//Stoping simulations if weights don't change for more than delta (0.001)
-		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
+
 		for ( int i = 0; i < Ncurves; i++ ) {	
 			
 			if ( i==0 ) {
-				 cout<<" Weights0 ";
-				 for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[0],j);
-				 cout<<std::endl;
+				//TODO: Crashes when there is a zero monomer weight 
+				//Store position of monomer in oligomeric species 
+				//if (gsl_vector_get(w_ens_current[0],0) < 0.5*w_cut) { cout<<"No monomer "<<std::endl; continue;} 
+				cout<<" Weights0 ";
+				for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[0],j);
+				cout<<std::endl;
 			}
 			if ( i > 0 ) {
 				cout<<" Weights"<<i;
                                 //TODO: Do it proper. Also oligomric speciec will have to change
                                 find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
-                                monomerMass, L, oligomerOrder,oligomeric_species);
+                                monomerMass, L, oligomerOrder, oligomeric_species);
 				for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[i],j);
 				cout<<std::endl;
                         }
