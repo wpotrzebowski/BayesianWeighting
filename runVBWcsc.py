@@ -45,9 +45,11 @@ if __name__=="__main__":
     parser.add_option("-e", "--saxs_experimental", dest="saxs_experimental",
                       help="Experimental SAXS curves [OBLIGATORY]")
     parser.add_option("-t", "--cs_simulated", dest="cs_simulated",
-                      help="Simulated SAXS curves [OBLIGATORY]")
+                      help="Simulated CS curves [OBLIGATORY]")
+    parser.add_option("-t", "--cs_rms", dest="cs_rms",
+                      help="Simulated CS rms [OBLIGATORY]")
     parser.add_option("-f", "--cs_experimental", dest="cs_experimental",
-                      help="Experimental SAXS curves [OBLIGATORY]")
+                      help="Experimental CS curves [OBLIGATORY]")
     parser.add_option("-o", "--output", dest="output",
                       help="Output file [OBLIGATORY]")
     parser.add_option("-c", "--cores", dest="nprocs",default = None,

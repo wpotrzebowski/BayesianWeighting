@@ -25,23 +25,23 @@ void block_copy(void *inp, void *outp) {
                out->alphas[i] = in->alphas[i];
        	}
        	out->size = in->size;
-	out->saxsExpPtr = in->saxsExpPtr;
-	out->saxsErrPtr = in->saxsErrPtr;
-	out->csRmsPtr = in->csRmsPtr;
-	//TODO: Seems not to be used
-	out->saxsEnsPtr = in->saxsEnsPtr;
-	out->saxsPrePtr = in->saxsPrePtr;
-	out->saxsMixPtr = in->saxsMixPtr;
-       	out->saxsScale = in->saxsScale;
+	    out->saxsExpPtr = in->saxsExpPtr;
+	    out->saxsErrPtr = in->saxsErrPtr;
+	    out->csRmsPtr = in->csRmsPtr;
+	    //TODO: Seems not to be used
+	    out->saxsEnsPtr = in->saxsEnsPtr;
+	    out->saxsPrePtr = in->saxsPrePtr;
+	    out->saxsMixPtr = in->saxsMixPtr;
+        out->saxsScale = in->saxsScale;
 	
-	out->csExpPtr = in->csExpPtr;
+	    out->csExpPtr = in->csExpPtr;
         out->csErrPtr = in->csErrPtr;
-	//TODO: Seems not to be used
+	    //TODO: Seems not to be used
         out->csEnsPtr = in->csEnsPtr;
         out->csPrePtr = in->csPrePtr;
         out->csMixPtr = in->csMixPtr;
 	
-	out->numberProcs = in->numberProcs;
+	    out->numberProcs = in->numberProcs;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -49,11 +49,11 @@ void * block_copy_construct(void *xp) {
 	block * y = block_alloc(x->size);
 	block_copy(x, y);
 	return y;
-        }
+}
 
 void block_destroy(void *xp){
 	block_free( (block *) xp);
-        }
+}
 
 ///////////////////////////////Simulated annealing handling finished////////////
 
@@ -275,8 +275,9 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const int &N, const int &n, const int &Ncurves,
         const std::string &presaxsfile, const std::string &saxsfile,
-        const std::string &precsfile, const std::string &csfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut)
+        const std::string &precsfile, const std::string &rmscsfile,
+        const std::string &csfile, const std::string &outfile,
+        const int &nprocs, const double &w_cut)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -302,12 +303,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *cs_pre = gsl_matrix_alloc(n,k);
    	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
-    	gsl_matrix *cs_file_matrix = gsl_matrix_alloc(n,3);
+    gsl_matrix *cs_file_matrix = gsl_matrix_alloc(n,3);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
 		*cs_exp = gsl_vector_alloc(n),
-        	*cs_err = gsl_vector_alloc(n),
+        *cs_err = gsl_vector_alloc(n),
 		*cs_rms = gsl_vector_alloc(n),
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
@@ -317,7 +318,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		*cs_ens_current = gsl_vector_alloc(n),
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
-        	*bayesian_weight1_current = gsl_vector_alloc(k);
+        *bayesian_weight1_current = gsl_vector_alloc(k);
 
 	gsl_vector_set_zero(bayesian_weight1);
 	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
@@ -339,6 +340,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     inFile = fopen(precsfile.c_str(),"r");
     gsl_matrix_fscanf(inFile,cs_pre); fclose(inFile);
 
+    inFile = fopen(rmscsfile.c_str(),"r");
+    gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
+
 	//Read scattering file
     FILE *inSAXSdat = fopen(saxsfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
@@ -348,6 +352,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     }
     fclose(inSAXSdat);
 
+    //Read chemical shifts file
 	FILE *inCSdat = fopen(csfile.c_str(),"r");
     gsl_matrix_fscanf(inCSdat,cs_file_matrix);
     for (int i = 0;  i< N; i++) {
@@ -376,9 +381,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
 	simAnBlock->csExpPtr = cs_exp;
-    	simAnBlock->csErrPtr = cs_err;
+    simAnBlock->csErrPtr = cs_err;
 	simAnBlock->csRmsPtr = cs_rms;
-    	simAnBlock->csPrePtr = cs_pre;
+    simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
@@ -394,21 +399,21 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	double smix;
 	double csmix;
-    	#pragma omp parallel for reduction(+:smix) reduction(+:csmix) num_threads(nprocs)
+    #pragma omp parallel for reduction(+:smix) reduction(+:csmix) num_threads(nprocs)
 	//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 	for( int i = 0; i< k; i++) {
-        	for (int j = 0; j < k; j++) {
+        for (int j = 0; j < k; j++) {
 			smix = 0.0;
 			csmix = 0.0;
-                	for (int m = 0; m < N; m++) {
+            for (int m = 0; m < N; m++) {
 				smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs,m),2);   
 			}
 			for (int m = 0; m < n; m++) {
-                                csmix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
-                        }
-                        saxs_mix[i*k+j] = smix;
+                 csmix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
+            }
+            saxs_mix[i*k+j] = smix;
 			cs_mix[i*k+j] = csmix;
-        	}
+        }
 	}
 	/*gettimeofday(&t2, NULL);
 	// compute and print the elapsed time in millisec

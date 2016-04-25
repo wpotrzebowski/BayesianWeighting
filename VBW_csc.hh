@@ -58,5 +58,6 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size);
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const int &N, const int &n, const int &Ncurves,
         const std::string &presaxsfile, const std::string &saxsfile,
-        const std::string &precsfile, const std::string &csfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut);
+        const std::string &precsfile, const std::string &rmscsfile,
+        const std::string &csfile, const std::string &outfile,
+        const int &nprocs, const double &w_cut);
