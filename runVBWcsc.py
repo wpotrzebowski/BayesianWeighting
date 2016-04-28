@@ -46,7 +46,7 @@ if __name__=="__main__":
                       help="Experimental SAXS curves [OBLIGATORY]")
     parser.add_option("-t", "--cs_simulated", dest="cs_simulated",
                       help="Simulated CS curves [OBLIGATORY]")
-    parser.add_option("-t", "--cs_rms", dest="cs_rms",
+    parser.add_option("-u", "--cs_rms", dest="cs_rms",
                       help="Simulated CS rms [OBLIGATORY]")
     parser.add_option("-f", "--cs_experimental", dest="cs_experimental",
                       help="Experimental CS curves [OBLIGATORY]")
@@ -62,5 +62,5 @@ if __name__=="__main__":
     vbwCSC.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.saxs_measures, options.saxs_measures, options.ncurves,
         options.saxs_simulated,  options.saxs_experimental,\
-        options.cs_simulated,  options.cs_experimental,\
+        options.cs_simulated, options.cs_rms,  options.cs_experimental,\
 		options.output, options.nprocs, options.weight_cut)
