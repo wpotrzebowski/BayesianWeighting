@@ -6,31 +6,31 @@ const double pi = M_PI;
 block * block_alloc(size_t n) {
         block * t = (block *) malloc(sizeof(block));
         t->alphas = (double *) malloc ((n+1) * sizeof(double));
-	//t->alphas = (double *) malloc ((n) * sizeof(double));
+	    //t->alphas = (double *) malloc ((n) * sizeof(double));
         t->size = n;
         return t;
-     	}
+}
 
 void block_free(block * t) {
         free(t->alphas);
         free(t);
-     	}
+}
 
 void block_copy(void *inp, void *outp) {
-       	int i;
-       	block * in = (block *) inp;
-       	block * out = (block *) outp;
+    int i;
+    block * in = (block *) inp;
+    block * out = (block *) outp;
 
-       	for(i=0; i< in->size; i++){
-               out->alphas[i] = in->alphas[i];
-       	}
-       	out->size = in->size;
-	out->saxsExpPtr = in->saxsExpPtr;
-	out->saxsErrPtr = in->saxsErrPtr;
-	//out->saxsEnsPtr = in->saxsEnsPtr;
+    for(i=0; i< in->size; i++){
+        out->alphas[i] = in->alphas[i];
+    }
+    out->size = in->size;
+    out->saxsExpPtr = in->saxsExpPtr;
+    out->saxsErrPtr = in->saxsErrPtr;
+    //out->saxsEnsPtr = in->saxsEnsPtr;
 	out->saxsPrePtr = in->saxsPrePtr;
 	out->saxsMixPtr = in->saxsMixPtr;
-       	out->OligomericSpecies = in->OligomericSpecies;
+    out->OligomericSpecies = in->OligomericSpecies;
 	out->Concentration = in->Concentration;
 	out->MonomerMass = in->MonomerMass;
 	out->OligomerOrder = in->OligomerOrder;
@@ -38,22 +38,23 @@ void block_copy(void *inp, void *outp) {
 	out->numberProcs = in->numberProcs;
 	out->numberOfCurves = in->numberOfCurves;
 	out->saxsWeightsEns  = in->saxsWeightsEns;
-        out->wCurrent = in->wCurrent;
-        out->wCurrentPrim = in->wCurrentPrim;
-        out->alphaL = in->alphaL;
+    out->wCurrent = in->wCurrent;
+    out->wCurrentPrim = in->wCurrentPrim;
+    out->alphaL = in->alphaL;
 
-	}
+}
 
 void * block_copy_construct(void *xp) {
+
 	block * x = (block *) xp;
 	block * y = block_alloc(x->size);
 	block_copy(x, y);
 	return y;
-        }
+}
 
 void block_destroy(void *xp){
 	block_free( (block *) xp);
-        }
+}
 
 ///////////////////////////////Simulated annealing handling finished////////////
 
@@ -105,7 +106,7 @@ void polySolver (int order, double cmass_ratio, gsl_vector *oligomeric_states, g
         = gsl_poly_complex_workspace_alloc( order );
         gsl_poly_complex_solve( coefficents, order, w, roots );
         gsl_poly_complex_workspace_free( w );
-	free( coefficents );
+	    free( coefficents );
 }
 
 /*void find_poly_root(gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, double ct_prim,
@@ -127,8 +128,11 @@ void find_poly_root( gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, doubl
 	//order is maximum oligomeric state order
 	double *roots = (double * ) malloc( 2*(order-1) * sizeof( double ));
 	//Monomers fraction in initial concentration
-	//OBS!: We assume here that monomer will be first on the strucrture list
+	//FIXME: We assume here that monomer will be first on the strucrture list
+	//FIXME: Solution pass the monomer index to the
 	double fm = gsl_vector_get(w_ens,0);
+	//TODO: Set a minium monomer fraction when is lower than 1%
+	if (fm < 0.01 ) { fm = 0.01; }
 	double fm_prim;
 	double cmass_ratio = monomerMass/ct;
 	double cmass_ratio_prim = monomerMass/ct_prim;
@@ -148,31 +152,32 @@ void find_poly_root( gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, doubl
 	}
 
 	for (int i = 0; i<order-2; i++) {
-                for (int j = 0; j<order-1; j++) {
-                        gsl_matrix_set(KSums,i,j,0);
-                }
+        for (int j = 0; j<order-1; j++) {
+            gsl_matrix_set(KSums,i,j,0);
         }
+    }
 	//For monomer monomer is set to 1
 	gsl_matrix_set(KSums,0,0,1);
-	
+
+    //TODO: Does the oligomeric species change when data is trimmed?
 	for(int i = 0; i < k; i++) {
 		N = gsl_vector_get(oligomeric_species,i);
 		if (N == 1) {
-                        gsl_vector_set(oligomeric_states,0,1);
-                }
-                else {
+            gsl_vector_set(oligomeric_states,0,1);
+        }
+         else {
 			//Oligomeric state says one when there is given state
 			gsl_vector_set(oligomeric_states,N-1,1);
 			mono_fract = N*pow(fm,N); 
 			w =  gsl_vector_get(w_ens,i);
 			//TODO: Will have to something smarter
 			//if (w < 0.001 ) w= 0.001;
-                	kN = w*pow(cmass_ratio,N-1)/mono_fract;
+            kN = w*pow(cmass_ratio,N-1)/mono_fract;
 			//kconsts are set with the resepect to monomer but it can be generalized
 			gsl_vector_set(KConsts,i-1,kN);
-                	gsl_matrix_set(KSums,0,N-1,gsl_matrix_get(KSums,0,N-1)+kN);
+            gsl_matrix_set(KSums,0,N-1,gsl_matrix_get(KSums,0,N-1)+kN);
 		}
-        }
+    }
 
 
 	polySolver(order,cmass_ratio_prim_inv,oligomeric_states,KSums,roots);
@@ -188,7 +193,7 @@ void find_poly_root( gsl_vector *w_ens, gsl_vector *w_ens_prim, double ct, doubl
 	gsl_vector_set(w_ens_prim, 0, fm_prim);
 	for(int i = 1; i < k; i++) {
 		N = gsl_vector_get(oligomeric_species,i);
-                mono_fract = N*pow(fm_prim,N);
+        mono_fract = N*pow(fm_prim,N);
 		gsl_vector_set(w_ens_prim,i,gsl_vector_get(KConsts,i-1)*mono_fract*pow(cmass_ratio_prim_inv,N-1));
 	}
 	free(roots);
@@ -266,10 +271,9 @@ double L_function(void *xp)
   for (int i = 0; i < L; i++) {
 	Lfunc+=(log_gamma_2 - gsl_sf_lngamma( x->alphas[i] ));
   }
-
   for (int i = 0; i < L; i++) {
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
-  	gsl_vector_set(w_current,i,x->alphas[i]/alpha_zero);
+  	    gsl_vector_set(w_current,i,x->alphas[i]/alpha_zero);
   }
 
   for( int l = 0; l < Ncurves; l++) {
@@ -420,7 +424,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	size_t Ncurvesm1;
 	
 	double *saxs_mix;
-        saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));
+    saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));
 	if (saxs_mix==NULL) { 
 		cerr<<"Cannot allocate memory"<<std::endl;
 		exit(1);
@@ -445,10 +449,10 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	gsl_vector *w_current[Ncurves],
                 *w_ens_current[Ncurves],
-		*saxs_ens_current[Ncurves];
+		        *saxs_ens_current[Ncurves];
 
 	gsl_vector *oligomeric_species = gsl_vector_alloc(k);
-        gsl_vector *concentrations = gsl_vector_alloc(Ncurves);
+    gsl_vector *concentrations = gsl_vector_alloc(Ncurves);
 
 	gsl_vector *saxs_weights_ens = gsl_vector_alloc(N);
 	gsl_vector *w_siman = gsl_vector_alloc(k);
@@ -480,7 +484,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	cout<<"Loaded priors"<<std::endl;	
 	//Reading file list
 	std::ifstream inFileList(filelist.c_str());
-        int list_line = 0;
+    int list_line = 0;
 	int oligomeric_state;
 	std::string structure_file;
 	while (inFileList >> oligomeric_state >> structure_file) {
@@ -550,9 +554,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         }
 
 	simAnBlock->saxsWeightsEns  = saxs_weights_ens;
-        simAnBlock->wCurrent = w_siman;
-        simAnBlock->wCurrentPrim = w_siman_prim;
-        simAnBlock->alphaL = alpha_l; 
+    simAnBlock->wCurrent = w_siman;
+    simAnBlock->wCurrentPrim = w_siman_prim;
+    simAnBlock->alphaL = alpha_l;
 
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
@@ -571,9 +575,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//simAnBlock->saxsEnsPtr = saxs_ens_current;
 
 	simAnBlock->OligomericSpecies = oligomeric_species;
-        simAnBlock->Concentration = concentrations;
-        simAnBlock->MonomerMass = monomerMass;
-        simAnBlock->OligomerOrder = oligomerOrder;
+    simAnBlock->Concentration = concentrations;
+    simAnBlock->MonomerMass = monomerMass;
+    simAnBlock->OligomerOrder = oligomerOrder;
 		
 	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_vector_fscanf(inFile,tostart); fclose(inFile); }	
 	//timeval t1, t2;
@@ -583,14 +587,16 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//double *saxs_mix =  (double * ) malloc( Ncurves * k * k * sizeof( double ));
 	double smix;
 	//double cs_mix;
-        //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs) 	
+    //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)
 	for (int l = 0; l < Ncurves; l++) {
 		//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 		for( int i = 0; i< k; i++) {
         		for (int j = i; j < k; j++) {
 				smix = 0.0;
                 		for (int m = 0; m < N; m++) {
-					smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_matrix_get(err_saxs,m,l),2);   
+					        smix+=gsl_matrix_get(saxs_pre,m,i)
+					            *gsl_matrix_get(saxs_pre,m,j)
+					            /pow(gsl_matrix_get(err_saxs,m,l),2);
 				}
                         	saxs_mix[ k*k*l + k*i + j ] = smix;
         		}
@@ -626,7 +632,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		K = 1.0;
 		T_INITIAL = 2.0; 
 		MU_T = 1.000025;
-       		T_MIN = 2.7776e-11;
+       	T_MIN = 2.7776e-11;
 		params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 		//Define params before equilibration and after for next rounds
@@ -685,86 +691,109 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		cout<<"Starting "<<overall_iteration+1<<" iteration with "<<L<<" models"<<std::endl;
 		
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
+		gsl_vector *oligomeric_species_round = gsl_vector_alloc(L);
+		//w_siman_round are not initialized with values but other wise fails
+		//TODO: Oligomeric species selection - add here
 		gsl_vector *w_siman_round = gsl_vector_alloc(L);
 		gsl_vector *w_siman_round_prim = gsl_vector_alloc(L);
 		gsl_vector *alpha_l_round = gsl_vector_alloc(L);	
-                double  *saxs_mix_round =  (double * ) malloc( Ncurves * L * L * sizeof( double ));
+        double  *saxs_mix_round =
+            (double * ) malloc( Ncurves * L * L * sizeof( double ));
 		block *simAnBlock = block_alloc(L + Ncurves - 1 );
 		l = 0;
+		cout<<" Weights0 before step finding ";
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
-                		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
-				l++;
+				gsl_vector_set(oligomeric_species_round,
+				    l, gsl_vector_get(oligomeric_species,i));
+                simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
+				cout<<" "<<gsl_vector_get(w_ens_current[0],i);
+	    		l++;
 			}
-        	}
+        }
+        cout<<std::endl;
+		//TODO: Bad things must happen here
 		for (int j = 0; j < Ncurves-1; j++) {
 			simAnBlock->alphas[L+j] = gsl_vector_get(alpha_zeros_prim,j);
 		}
 		for (int c=0; c < Ncurves; c++) {
-			//#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
-                	for( int i = 0; i < L; i++) {
-                        	for (int j = i; j < L; j++) {
+		//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)
+            for( int i = 0; i < L; i++) {
+                for (int j = i; j < L; j++) {
 					smix = 0.0;
-                                	for (int m = 0; m < N; m++) {
-						smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_matrix_get(err_saxs,m,c),2);
-        	                	}
+                    for (int m = 0; m < N; m++) {
+						smix+=gsl_matrix_get(saxs_pre_round,m,i)
+						*gsl_matrix_get(saxs_pre_round,m,j)
+						/pow(gsl_matrix_get(err_saxs,m,c),2);
+        	        }
 					saxs_mix_round[ L*L*c + L*i + j ] = smix;
-                       		}
-			}
                 }
-		
+			}
+        }
+
 		simAnBlock->saxsWeightsEns  = saxs_weights_ens;
-	        simAnBlock->wCurrent = w_siman_round;
-        	simAnBlock->wCurrentPrim = w_siman_round_prim;
-        	simAnBlock->alphaL = alpha_l_round;                       
+	    simAnBlock->wCurrent = w_siman_round;
+        simAnBlock->wCurrentPrim = w_siman_round_prim;
+        simAnBlock->alphaL = alpha_l_round;
 		//saxs_exp and err_saxs are independent of run
-        	simAnBlock->saxsExpPtr = saxs_exp;
-        	simAnBlock->saxsErrPtr = err_saxs;
+        simAnBlock->saxsExpPtr = saxs_exp;
+        simAnBlock->saxsErrPtr = err_saxs;
 		simAnBlock->saxsPrePtr = saxs_pre_round;
-        	simAnBlock->saxsMixPtr = saxs_mix_round;
+        simAnBlock->saxsMixPtr = saxs_mix_round;
 		//simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
 		simAnBlock->numberProcs = nprocs;	
 		simAnBlock->numberOfCurves = Ncurves;
 	
-		simAnBlock->OligomericSpecies = oligomeric_species;
-	        simAnBlock->Concentration = concentrations;
-        	simAnBlock->MonomerMass = monomerMass;
-        	simAnBlock->OligomerOrder = oligomerOrder;	
+		simAnBlock->OligomericSpecies = oligomeric_species_round;
+	    simAnBlock->Concentration = concentrations;
+        simAnBlock->MonomerMass = monomerMass;
+        simAnBlock->OligomerOrder = oligomerOrder;
 		////////////////////////Short equilibration period to find step size/////////////////////////
 		N_TRIES = 1;
-                ITERS_FIXED_T = 1000;
-                K = 1.0;
-                T_INITIAL = 1.0;
-                MU_T = 1.00005;
-                T_MIN = 1.0;
+        ITERS_FIXED_T = 1000;
+        K = 1.0;
+        T_INITIAL = 1.0;
+        MU_T = 1.00005;
+        T_MIN = 1.0;
 		//Itertate over different step size
 		float dmin = 10;
-		for (double s=0.01; s<2.1; s+=0.1) { 
-                	params = {N_TRIES, ITERS_FIXED_T, s, K, T_INITIAL, MU_T, T_MIN};
+
+		for (double s=0.01; s<2.1; s+=0.1) {
+            params = {N_TRIES, ITERS_FIXED_T, s, K, T_INITIAL, MU_T, T_MIN};
 		
-                	//alphas are used from the previous simulation 
-                	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
-                                block_copy, block_copy_construct, block_destroy,
-                                0, params, &acceptance_rate);
+            //alphas are used from the previous simulation
+            gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
+                block_copy, block_copy_construct, block_destroy,
+                0, params, &acceptance_rate);
 			if(fabs(acceptance_rate -0.5) < dmin) { 
 				dmin = fabs(acceptance_rate -0.5);
 				STEP_SIZE = s;		
 			}	
 		}
+		STEP_SIZE = 0.01;
+		cout<<" Weights0 after step set";
+
+		for (int i = 0; i < k; i++) {
+			if (removed_indexes[i]==false) {
+		        cout<<" "<<gsl_vector_get(w_ens_current[0],i);
+		    }
+		}
+		cout<<std::endl;
+
 		///////////////////////////////////////////////////////////////////////////////////////////
 		cout<<"STEP_SIZE set to: "<<STEP_SIZE<<std::endl;
 		N_TRIES = 1;
-        	ITERS_FIXED_T = 1; 
-        	STEP_SIZE = 1;
-        	K = 1.0;
-        	T_INITIAL = 1.0;
+        ITERS_FIXED_T = 1;
+        STEP_SIZE = 1;
+        K = 1.0;
+        T_INITIAL = 1.0;
 		MU_T = 1.00005;
 		T_MIN = 1.3888e-11;
-        	params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
+        params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 		//alphas are used from the previous simulation 
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
@@ -773,14 +802,15 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 		energy_current = L_function(simAnBlock);
 
-                //If L_function doesn't improve after 10 iterations exit program
+        //If L_function doesn't improve after 10 iterations exit program
 		newL = 0;
 		m = 0; 
 		alpha_zero = 0.0;
 		for ( int i = 0; i < L; i++ ) alpha_zero +=simAnBlock->alphas[i];
 
 		//Sampled alpha zeros are stored here
-		for ( int j = 0; j < Ncurves-1; j++ ) gsl_vector_set(alpha_zeros_prim,j,simAnBlock->alphas[L+j]);
+		for ( int j = 0; j < Ncurves-1; j++ ) gsl_vector_set(alpha_zeros_prim,j
+		    ,simAnBlock->alphas[L+j]);
 		
 		double new_alpha_zero = 0.0;
 		for ( int i = 0; i < k; i++ ) {
@@ -792,7 +822,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 					removed_indexes[i] = true;
 				} else {
 					new_alpha_zero += simAnBlock->alphas[m];
-					gsl_vector_set( alpha_ens_current, i, simAnBlock->alphas[m] );
+					gsl_vector_set(alpha_ens_current, i, simAnBlock->alphas[m]);
 					newL++;
 				}
 				m++;
@@ -801,36 +831,59 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		
 		//int wdelta_count = 0;
 		for ( int i = 0; i < k; i++ ) {
-                        if (removed_indexes[i]==false) {
-				gsl_vector_set( w_ens_current[0],i,gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
+            if (removed_indexes[i]==false) {
+				gsl_vector_set( w_ens_current[0],i,
+				    gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
 			}
 		}
 
 		for ( int i = 0; i < Ncurves; i++ ) {	
 			
 			if ( i==0 ) {
-				//TODO: Crashes when there is a zero monomer weight 
-				//Store position of monomer in oligomeric species 
+				//Store position of monomer in oligomeric species
 				//if (gsl_vector_get(w_ens_current[0],0) < 0.5*w_cut) { cout<<"No monomer "<<std::endl; continue;} 
 				cout<<" Weights0 ";
-				for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[0],j);
+				l=0;
+				for (int j = 0; j < k; j++) {
+				    if (removed_indexes[j]==false) {
+				        cout<<" "<<gsl_vector_get(w_ens_current[0],j);
+				        gsl_vector_set(w_siman_round, l, gsl_vector_get(w_ens_current[0],j));
+				        l++;
+				    }
+				}
 				cout<<std::endl;
 			}
 			if ( i > 0 ) {
 				cout<<" Weights"<<i;
-                                //TODO: Do it proper. Also oligomric speciec will have to change
-                                find_poly_root(w_ens_current[0], w_ens_current[i], gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
-                                monomerMass, L, oligomerOrder, oligomeric_species);
-				for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[i],j);
+                //FIXME: I am passing full length weigts while in fact it has to be done on trimmed version
+
+                find_poly_root(w_siman_round, w_siman_round_prim,
+                gsl_vector_get(concentrations,0), gsl_vector_get(concentrations,i),
+                monomerMass, L, oligomerOrder, oligomeric_species_round);
+
+				l=0;
+				for (int j = 0; j < k; j++) {
+				    if (removed_indexes[j]==false) {
+				        gsl_vector_set(w_ens_current[i], j, gsl_vector_get(w_siman_round_prim,l));
+				        cout<<" "<<gsl_vector_get(w_ens_current[i],j);
+				    }
+				    else {
+				        gsl_vector_set(w_ens_current[i], j, 0);
+				    }
+				}
 				cout<<std::endl;
-                        }
+            }
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
-	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
-        	        //gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
-			gsl_blas_dgemv(CblasNoTrans, 1.0/gsl_vector_get(concentrations,i), saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
-                	gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
-                        	saxs_exp_vec, err_saxs_vec ,N));
+	        *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
+        	//gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
+			gsl_blas_dgemv(CblasNoTrans, 1.0/gsl_vector_get(concentrations,i),
+			    saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
+            gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
+                saxs_exp_vec, err_saxs_vec ,N));
 		}
+		cout<<" Weights0 after find polyroot ";
+		for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[0],j);
+		cout<<std::endl;
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof
 		L = newL;
@@ -838,18 +891,18 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		overall_iteration++;
 		if (energy_current < energy_min) {	
 			energy_min = energy_current;
-                        last_updated = overall_iteration;
+            last_updated = overall_iteration;
 
 			for( int l = 0; l < k; l++) {
-                		gsl_vector_set(memory, l , gsl_vector_get(w_ens_current[0],l));
-        		}
+                gsl_vector_set(memory, l , gsl_vector_get(w_ens_current[0],l));
+        	}
 
-        		gsl_vector_set(memory, k, gsl_vector_get(saxs_scale_current,0));
-        		gsl_vector_set(memory, k+1, energy_current);
+        	gsl_vector_set(memory, k, gsl_vector_get(saxs_scale_current,0));
+        	gsl_vector_set(memory, k+1, energy_current);
 
 			ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
-        		//All weights plus saxs scale factor
-        		for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
+        	//All weights plus saxs scale factor
+        	for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
         		output <<gsl_vector_get(memory,k+1)<<endl;
 			output.close();
 		}
@@ -865,17 +918,18 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                	gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
-                gsl_matrix_free(saxs_pre_round);
+        gsl_matrix_free(saxs_pre_round);
+        gsl_vector_free(oligomeric_species_round);
 		gsl_vector_free(w_siman_round);
 		gsl_vector_free(w_siman_round_prim);
 		gsl_vector_free(alpha_l_round);
 		if ((overall_iteration-last_updated)>10) {
-                        cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
-                        break;
-                }
+            cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
+            break;
+        }
 		
 		if (overall_iteration == samples) {
-			cout<<"Maximum number of iteration has been reached. Stopping simulation"<<std::endl;
+			cout<<"Maximum number of iteration has been reached.Stopping simulation"<<std::endl;
 			break;
 		}
 		

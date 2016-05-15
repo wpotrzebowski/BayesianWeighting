@@ -472,10 +472,10 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		}
                 
 		//saxs_exp and err_saxs are independent of run
-        	simAnBlock->saxsExpPtr = saxs_exp;
-        	simAnBlock->saxsErrPtr = err_saxs;
+        simAnBlock->saxsExpPtr = saxs_exp;
+        simAnBlock->saxsErrPtr = err_saxs;
 		simAnBlock->saxsPrePtr = saxs_pre_round;
-        	simAnBlock->saxsMixPtr = saxs_mix_round;
+        simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
 
