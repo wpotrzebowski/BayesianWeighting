@@ -58,9 +58,11 @@ if __name__=="__main__":
     parser.add_option("-w", "--weights", dest="weight_cut",default = None,
                       type = 'float',
                       help="Weight cutoff [OBLIGATORY]")
+    parser.add_option("-d", "--data_type", dest="data_type",default = "both",
+                      help="Type of data used in simulation [saxs,nmr,both]")
     options, args = parser.parse_args()
     vbwCSC.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.saxs_measures, options.saxs_measures, options.ncurves,
         options.saxs_simulated,  options.saxs_experimental,\
         options.cs_simulated, options.cs_rms,  options.cs_experimental,\
-		options.output, options.nprocs, options.weight_cut)
+		options.output, options.nprocs, options.weight_cut, options.data_type)

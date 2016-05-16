@@ -1,5 +1,4 @@
 #include "VBW_csc.hh"
-#include "LFuncGpu.hh"
 
 using namespace std;
 const double pi = M_PI;
@@ -42,6 +41,7 @@ void block_copy(void *inp, void *outp) {
         out->csMixPtr = in->csMixPtr;
 	
 	    out->numberProcs = in->numberProcs;
+	    out->dataType = in->dataType;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -210,19 +210,26 @@ double L_function(void *xp)
 
   for(i_ind = 0; i_ind < L; i_ind++) {
   	for ( j_ind = i_ind; j_ind < L; j_ind++) {
-		smix = mix_saxs[L*i_ind+j_ind];
-		csmix = mix_cs[L*i_ind+j_ind];
-                deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
-               	fit_saxs_mix += deltamix * smix;
-		fit_cs_mix += deltamix * csmix;
+		    smix = mix_saxs[L*i_ind+j_ind];
+		    csmix = mix_cs[L*i_ind+j_ind];
+            deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+            fit_saxs_mix += deltamix * smix;
+		    fit_cs_mix += deltamix * csmix;
        }
   }
   //gettimeofday(&t2, NULL); 
   fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
   fit_cs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
-  //Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
-  Lfunc+=0.5*(fit_saxs+fit_cs+fit_saxs_mix+fit_cs_mix);
-
+  //DataType
+  //0: both
+  //1: CS only
+  //2: SAXS only - not yet supported
+  if (x->dataType == 1) {
+    Lfunc+=0.5*(fit_cs+fit_cs_mix);
+  }
+  else {
+    Lfunc+=0.5*(fit_saxs+fit_cs+fit_saxs_mix+fit_cs_mix);
+  }
   // compute and print the elapsed time in millisec
   //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
   //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
@@ -277,7 +284,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const std::string &presaxsfile, const std::string &saxsfile,
         const std::string &precsfile, const std::string &rmscsfile,
         const std::string &csfile, const std::string &outfile,
-        const int &nprocs, const double &w_cut)
+        const int &nprocs, const double &w_cut, const int &data_type)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -385,6 +392,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	simAnBlock->csRmsPtr = cs_rms;
     simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
+	simAnBlock->dataType = data_type;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
@@ -541,7 +549,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 simAnBlock->csEnsPtr = cs_ens_current;
 
 		simAnBlock->numberProcs = nprocs;	
-		
+		simAnBlock->dataType = data_type;
 		////////////////////////Short equilibration period to find step size/////////////////////////
 		N_TRIES = 1;
                 ITERS_FIXED_T = 1000;

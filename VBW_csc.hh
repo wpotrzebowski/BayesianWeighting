@@ -28,12 +28,13 @@ typedef struct {
         double saxsScale;
         void *csExpPtr;
         void *csErrPtr;
-	void *csRmsPtr;
+	    void *csRmsPtr;
         void *csEnsPtr;
         void *csPrePtr;
         void *csMixPtr;
         double csScale;
         int numberProcs;
+        int dataType;
         } block;
 
 block * block_alloc(size_t n);
@@ -60,4 +61,4 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const std::string &presaxsfile, const std::string &saxsfile,
         const std::string &precsfile, const std::string &rmscsfile,
         const std::string &csfile, const std::string &outfile,
-        const int &nprocs, const double &w_cut);
+        const int &nprocs, const double &w_cut, const int &data_type);
