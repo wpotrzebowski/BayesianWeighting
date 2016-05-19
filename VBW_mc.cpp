@@ -4,16 +4,16 @@ using namespace std;
 const double pi = M_PI;
 
 block * block_alloc(size_t n) {
-        block * t = (block *) malloc(sizeof(block));
-        t->alphas = (double *) malloc ((n+1) * sizeof(double));
-	    //t->alphas = (double *) malloc ((n) * sizeof(double));
-        t->size = n;
-        return t;
+    block * t = (block *) malloc(sizeof(block));
+    t->alphas = (double *) malloc ((n+1) * sizeof(double));
+	//t->alphas = (double *) malloc ((n) * sizeof(double));
+    t->size = n;
+    return t;
 }
 
 void block_free(block * t) {
-        free(t->alphas);
-        free(t);
+    free(t->alphas);
+    free(t);
 }
 
 void block_copy(void *inp, void *outp) {
@@ -399,12 +399,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	int read_success =0;
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
-        int ITERS_FIXED_T ;
-        double STEP_SIZE;
-        double K;
-        double T_INITIAL;
-        double MU_T;
-        double T_MIN;
+    int ITERS_FIXED_T ;
+    double STEP_SIZE;
+    double K;
+    double T_INITIAL;
+    double MU_T;
+    double T_MIN;
 
 	/*Input Format of main file
 	Not stdin but read main file
@@ -434,7 +434,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		*tostart = gsl_vector_alloc(k+2),
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
-                *bayesian_weight1_current = gsl_vector_alloc(k);
+        *bayesian_weight1_current = gsl_vector_alloc(k);
 
 	//Done to satisfy non-zero vector lenght
 	if (Ncurves>1)  Ncurvesm1 = Ncurves-1; 
@@ -459,7 +459,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
   	gsl_vector *w_siman_prim = gsl_vector_alloc(k);
   	gsl_vector *alpha_l = gsl_vector_alloc(k); 
 
-        int oligomerOrder=0;//Maximum value from oligomeric_species + 1 (due to polysolver definition);
+    int oligomerOrder=0;//Maximum value from oligomeric_species + 1 (due to polysolver definition);
 
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	//SAXS file matrix containing q vectors, Intenisty, erros
@@ -497,9 +497,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	oligomerOrder +=1;	
 
 	if (list_line != k) {
-                cerr<<"Number of records in file list doesn't agree with sumber of simualted curves"<<std::endl;
-                exit (EXIT_FAILURE);
-        }
+        cerr<<"Number of records in file list doesn't agree with sumber of simualted curves"<<std::endl;
+        exit (EXIT_FAILURE);
+    }
 
 	cout<<"Loaded file list"<<std::endl;	
 	//Experimental SAXS files are read
@@ -550,8 +550,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	}
 	//Initializing alphas_zero with 1.0
 	for (int l = 0; l < Ncurves-1; l++) {
-                simAnBlock->alphas[k+l] = 1.0;
-        }
+        simAnBlock->alphas[k+l] = 1.0;
+    }
 
 	simAnBlock->saxsWeightsEns  = saxs_weights_ens;
     simAnBlock->wCurrent = w_siman;
@@ -592,12 +592,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 		for( int i = 0; i< k; i++) {
         		for (int j = i; j < k; j++) {
-				smix = 0.0;
-                		for (int m = 0; m < N; m++) {
+				    smix = 0.0;
+                    for (int m = 0; m < N; m++) {
 					        smix+=gsl_matrix_get(saxs_pre,m,i)
-					            *gsl_matrix_get(saxs_pre,m,j)
+					        *gsl_matrix_get(saxs_pre,m,j)
 					            /pow(gsl_matrix_get(err_saxs,m,l),2);
-				}
+				    }
                         	saxs_mix[ k*k*l + k*i + j ] = smix;
         		}
 		}
@@ -647,13 +647,13 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		}
 	
 		for (int j=0; j < Ncurves-1; j++) {
-                        gsl_vector_set(alpha_zeros_prim,j,simAnBlock->alphas[k+j]);
+            gsl_vector_set(alpha_zeros_prim,j,simAnBlock->alphas[k+j]);
 			cout<<"Alphas zeros prim "<<alpha_zero<<" : "<< gsl_vector_get(alpha_zeros_prim,j)<<std::endl;;
-                }
+        }
 
 		for (int i=0; i < k; i++) {
-                	gsl_vector_set(w_ens_current[0],i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
-        	}
+            gsl_vector_set(w_ens_current[0],i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
+        }
 		
 		energy_min = L_function(simAnBlock);
 		for (int i= 0; i < Ncurves; i++) {
@@ -664,9 +664,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 		monomerMass, k, oligomerOrder,oligomeric_species);
 			}
 			*saxs_exp_vec = gsl_matrix_column(saxs_exp,i).vector;
-	                *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
-        	        gsl_blas_dgemv(CblasNoTrans, 1.0/gsl_vector_get(concentrations,i), saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
-              		gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
+	        *err_saxs_vec = gsl_matrix_column(err_saxs,i).vector;
+            gsl_blas_dgemv(CblasNoTrans, 1.0/gsl_vector_get(concentrations,i), saxs_pre, w_ens_current[i], 0.0, saxs_ens_current[i]);
+            gsl_vector_set(saxs_scale_current, i, SaxsScaleMean(saxs_ens_current[i],\
                         saxs_exp_vec, err_saxs_vec ,N));
 		}
 		block_destroy(simAnBlock);
@@ -833,7 +833,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		for ( int i = 0; i < k; i++ ) {
             if (removed_indexes[i]==false) {
 				gsl_vector_set( w_ens_current[0],i,
-				    gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
+				gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
 			}
 		}
 
@@ -866,6 +866,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 				    if (removed_indexes[j]==false) {
 				        gsl_vector_set(w_ens_current[i], j, gsl_vector_get(w_siman_round_prim,l));
 				        cout<<" "<<gsl_vector_get(w_ens_current[i],j);
+				        l++;
 				    }
 				    else {
 				        gsl_vector_set(w_ens_current[i], j, 0);
@@ -882,7 +883,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 saxs_exp_vec, err_saxs_vec ,N));
 		}
 		cout<<" Weights0 after find polyroot ";
-		for (int j = 0; j < L; j++) cout<<" "<<gsl_vector_get(w_ens_current[0],j);
+		for (int j = 0; j < k; j++) cout<<" "<<gsl_vector_get(w_ens_current[0],j);
 		cout<<std::endl;
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof
@@ -903,19 +904,19 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
         	//All weights plus saxs scale factor
         	for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
-        		output <<gsl_vector_get(memory,k+1)<<endl;
+        	output <<gsl_vector_get(memory,k+1)<<endl;
 			output.close();
 		}
 	
 		sampling_step = overall_iteration-1;
 		for (int jind=0; jind<k; jind++) {
-                    gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current[0],jind));
-                }
+            gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current[0],jind));
+        }
 
-                double niter = 1.0/double(sampling_step+1);
-               	gsl_vector_add(bayesian_weight1,w_ens_current[0]);
-                gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
-               	gsl_vector_scale(bayesian_weight1_current,niter);
+        double niter = 1.0/double(sampling_step+1);
+        gsl_vector_add(bayesian_weight1,w_ens_current[0]);
+        gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
+        gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
         gsl_matrix_free(saxs_pre_round);
