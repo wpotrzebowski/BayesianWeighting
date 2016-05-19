@@ -60,9 +60,17 @@ if __name__=="__main__":
                       help="Weight cutoff [OBLIGATORY]")
     parser.add_option("-d", "--data_type", dest="data_type",default = "both",
                       help="Type of data used in simulation [saxs,nmr,both]")
+
+    if options.data_type == "nmr":
+        dataType = 1
+    elif options.data_type == "saxd":
+        dataType = 2
+    else:
+        dataType = 0 #Both data types
+
     options, args = parser.parse_args()
     vbwCSC.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.saxs_measures, options.saxs_measures, options.ncurves,
         options.saxs_simulated,  options.saxs_experimental,\
         options.cs_simulated, options.cs_rms,  options.cs_experimental,\
-		options.output, options.nprocs, options.weight_cut, options.data_type)
+		options.output, options.nprocs, options.weight_cut, dataType)
