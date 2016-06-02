@@ -4219,6 +4219,58 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_block_dataType_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  block *arg1 = (block *) 0 ;
+  int arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:block_dataType_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_dataType_set" "', argument " "1"" of type '" "block *""'"); 
+  }
+  arg1 = reinterpret_cast< block * >(argp1);
+  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "block_dataType_set" "', argument " "2"" of type '" "int""'");
+  } 
+  arg2 = static_cast< int >(val2);
+  if (arg1) (arg1)->dataType = arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_block_dataType_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  block *arg1 = (block *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  int result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:block_dataType_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_block, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "block_dataType_get" "', argument " "1"" of type '" "block *""'"); 
+  }
+  arg1 = reinterpret_cast< block * >(argp1);
+  result = (int) ((arg1)->dataType);
+  resultobj = SWIG_From_int(static_cast< int >(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_new_block(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   block *result = 0 ;
@@ -4722,6 +4774,7 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   std::string *arg12 = 0 ;
   int *arg13 = 0 ;
   double *arg14 = 0 ;
+  int *arg15 = 0 ;
   int temp1 ;
   int val1 ;
   int ecode1 = 0 ;
@@ -4750,6 +4803,9 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   double temp14 ;
   double val14 ;
   int ecode14 = 0 ;
+  int temp15 ;
+  int val15 ;
+  int ecode15 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -4764,8 +4820,9 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   PyObject * obj11 = 0 ;
   PyObject * obj12 = 0 ;
   PyObject * obj13 = 0 ;
+  PyObject * obj14 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOOOOO:run_vbw",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10,&obj11,&obj12,&obj13)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOOOOOO:run_vbw",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10,&obj11,&obj12,&obj13,&obj14)) SWIG_fail;
   ecode1 = SWIG_AsVal_int(obj0, &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "run_vbw" "', argument " "1"" of type '" "int""'");
@@ -4885,7 +4942,13 @@ SWIGINTERN PyObject *_wrap_run_vbw(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   } 
   temp14 = static_cast< double >(val14);
   arg14 = &temp14;
-  run_vbw((int const &)*arg1,(int const &)*arg2,(std::string const &)*arg3,(int const &)*arg4,(int const &)*arg5,(int const &)*arg6,(std::string const &)*arg7,(std::string const &)*arg8,(std::string const &)*arg9,(std::string const &)*arg10,(std::string const &)*arg11,(std::string const &)*arg12,(int const &)*arg13,(double const &)*arg14);
+  ecode15 = SWIG_AsVal_int(obj14, &val15);
+  if (!SWIG_IsOK(ecode15)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode15), "in method '" "run_vbw" "', argument " "15"" of type '" "int""'");
+  } 
+  temp15 = static_cast< int >(val15);
+  arg15 = &temp15;
+  run_vbw((int const &)*arg1,(int const &)*arg2,(std::string const &)*arg3,(int const &)*arg4,(int const &)*arg5,(int const &)*arg6,(std::string const &)*arg7,(std::string const &)*arg8,(std::string const &)*arg9,(std::string const &)*arg10,(std::string const &)*arg11,(std::string const &)*arg12,(int const &)*arg13,(double const &)*arg14,(int const &)*arg15);
   resultobj = SWIG_Py_Void();
   if (SWIG_IsNewObj(res3)) delete arg3;
   if (SWIG_IsNewObj(res7)) delete arg7;
@@ -4941,6 +5004,8 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"block_csScale_get", _wrap_block_csScale_get, METH_VARARGS, NULL},
 	 { (char *)"block_numberProcs_set", _wrap_block_numberProcs_set, METH_VARARGS, NULL},
 	 { (char *)"block_numberProcs_get", _wrap_block_numberProcs_get, METH_VARARGS, NULL},
+	 { (char *)"block_dataType_set", _wrap_block_dataType_set, METH_VARARGS, NULL},
+	 { (char *)"block_dataType_get", _wrap_block_dataType_get, METH_VARARGS, NULL},
 	 { (char *)"new_block", _wrap_new_block, METH_VARARGS, NULL},
 	 { (char *)"delete_block", _wrap_delete_block, METH_VARARGS, NULL},
 	 { (char *)"block_swigregister", block_swigregister, METH_VARARGS, NULL},

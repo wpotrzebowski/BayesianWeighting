@@ -62,14 +62,13 @@ if __name__=="__main__":
                       help="Type of data used in simulation [saxs,nmr,both]")
 
     options, args = parser.parse_args()
-    
+
     if options.data_type == "nmr":
         dataType = 1
     elif options.data_type == "saxd":
         dataType = 2
     else:
         dataType = 0 #Both data types
-
     vbwCSC.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.saxs_measures, options.saxs_measures, options.ncurves,
         options.saxs_simulated,  options.saxs_experimental,\
