@@ -388,9 +388,9 @@ int main()
 				
 	}
 
-	if (vbw==1) { for(int i = 0; i < np; i++) step_size[i] = 0.01; }	
+	if (vbw==1) { for(int i = 0; i < np; i++) step_size[i] = 0.01; again = 1;}	
 	//In general generates random variates with the given distribution and calculates energy based on these
-	if(again != 1 || vbw!=1)
+	if(again != 1)
 	{
 		cout << "Equilibration" << endl;
 		rep = 0;
