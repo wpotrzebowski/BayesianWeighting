@@ -25,21 +25,14 @@ void block_copy(void *inp, void *outp) {
                out->alphas[i] = in->alphas[i];
        	}
        	out->size = in->size;
-	out->saxsExpPtr = in->saxsExpPtr;
-	out->saxsErrPtr = in->saxsErrPtr;
-	out->saxsEnsPtr = in->saxsEnsPtr;
-	out->saxsPrePtr = in->saxsPrePtr;
-	out->saxsMixPtr = in->saxsMixPtr;
-       	out->saxsScale = in->saxsScale;
-	
-	/*out->csExpPtr = in->csExpPtr;
-        out->csErrPtr = in->csErrPtr;
-	out->csRmsPtr = in->csRmsPtr;
-        out->csEnsPtr = in->csEnsPtr;
-        out->csPrePtr = in->csPrePtr;
-        out->csMixPtr = in->csMixPtr;*/
-	
-	out->numberProcs = in->numberProcs;
+	    out->saxsExpPtr = in->saxsExpPtr;
+	    out->saxsErrPtr = in->saxsErrPtr;
+	    out->saxsEnsPtr = in->saxsEnsPtr;
+	    out->saxsPrePtr = in->saxsPrePtr;
+	    out->saxsMixPtr = in->saxsMixPtr;
+        out->saxsScale = in->saxsScale;
+
+	    out->numberProcs = in->numberProcs;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -47,11 +40,11 @@ void * block_copy_construct(void *xp) {
 	block * y = block_alloc(x->size);
 	block_copy(x, y);
 	return y;
-        }
+}
 
 void block_destroy(void *xp){
 	block_free( (block *) xp);
-        }
+}
 
 ///////////////////////////////Simulated annealing handling finished////////////
 
@@ -144,6 +137,7 @@ double L_function(void *xp)
   int nprocs = x->numberProcs;
   size_t L = x->size;
   size_t N = saxs_exp->size;
+  gsl_vector *weightsL = gsl_vector_alloc(N);
   int rep = 0;
   double alpha_zero = 0.0;
   double alpha_ens[N];
@@ -171,7 +165,13 @@ double L_function(void *xp)
 	for (int k = 0; k < L; k++) {
 		alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
 	}
-	fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
+	gsl_vector_set(weightsL, i, alpha_ens[i]/alpha_zero);
+  }
+  //TODO: Scaling factor can be introduced here
+  double saxs_scale_current = SaxsScaleMean(weightsL,saxs_exp,err_saxs,N);
+
+  for( int i = 0; i< N; i++) {
+	fit_saxs += ( pow(saxs_scale_current*alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
   }
  
   /*for( int i = 0; i< n; i++) {
@@ -200,8 +200,9 @@ double L_function(void *xp)
   	for ( j_ind = i_ind; j_ind < L; j_ind++) {
 		smix = mix_saxs[L*i_ind+j_ind];
 		//cs_mix = mix_cs[L*i_ind+j_ind];
-                deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] : x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
-               	fit_saxs_mix += deltamix * smix;
+        deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] :
+        x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+        fit_saxs_mix += deltamix * smix;
 		//fit_cs_mix += deltamix * cs_smix;
        }
   }
@@ -216,6 +217,7 @@ double L_function(void *xp)
   //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
   //cout << "Time: "<< fit_saxs_mix<< " : "<<elapsedTime << " ms."<<std::endl;
 
+  gsl_vector_free(weightsL);
   return Lfunc;
 }
 
@@ -344,6 +346,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	simAnBlock->numberProcs = nprocs;
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	// gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
+	//TODO: Scaling is not required here?
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
@@ -553,7 +556,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
 
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
-	        saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
+	    saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof
 		L = newL;
