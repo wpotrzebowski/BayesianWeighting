@@ -98,22 +98,33 @@ void ilrInv( int k, gsl_vector *jerk, gsl_matrix *U, gsl_vector *in, gsl_vector 
 double Force(gsl_vector *h_ens, gsl_vector *h_pre, int k)
 {
 	double fit_prior = 0.0;
-	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2); }
+	for( int i = 0; i < k-1; i++) { fit_prior +=
+	pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2); }
 	return 0.5 * fit_prior;
 }
 
-double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, 
-		//gsl_vector *cs_ens, gsl_vector *cs_exp, gsl_vector *cs_err_exp, gsl_vector *cs_err_pre,
-		gsl_vector *h_pre, double saxs_scale,
-		double f, int k, int N, double T)
+double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens,
+                gsl_vector *saxs_exp, gsl_vector *err_saxs,
+		        gsl_vector *h_pre, double saxs_scale,
+		        double f, int k, int N, double T)
 {
 	double fit_prior = 0.0, fit_saxs = 0.0;
+<<<<<<< HEAD
 	for( int i = 0; i< N; i++) { fit_saxs += 
 	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) 
 	/ pow(gsl_vector_get(err_saxs,i),2) ); }
 	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
+=======
+
+	for( int i = 0; i< N; i++) { fit_saxs +=
+	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
+	pow(gsl_vector_get(err_saxs,i),2)); }
+
+	for( int i = 0; i < k-1; i++) { fit_prior +=
+	pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
+
+>>>>>>> 67505543cc3b641bad51bfe37bb49244530b19d6
 	return 0.5*(fit_saxs + fit_prior)/T;
-	//return 0.5*( fit_saxs)/T;
 	//1/T comes from the multiple replica exchnages
 }
 

@@ -103,12 +103,13 @@ double Force(gsl_vector *h_ens, gsl_vector *h_pre, int k)
 }
 
 
-double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, 
-		gsl_vector *cs_ens, gsl_vector *cs_exp, gsl_vector *cs_err, gsl_vector *cs_rms,
-		gsl_vector *h_pre, double saxs_scale,
-		double f, int k, int N, int n, double T)
+double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp,
+            gsl_vector *err_saxs,  gsl_vector *cs_ens, gsl_vector *cs_exp,
+            gsl_vector *cs_err, gsl_vector *cs_rms, gsl_vector *h_pre,
+            double saxs_scale, double f, int k, int N, int n, double T)
 {
 	double fit_prior = 0.0, fit_saxs = 0.0, fit_cs = 0.0;
+<<<<<<< HEAD
 	for( int i = 0; i< n; i++) { fit_cs += 
 		( pow( gsl_vector_get(cs_ens,i) - gsl_vector_get(cs_exp,i), 2) / 
 		pow((gsl_vector_get(cs_err,i) + gsl_vector_get(cs_rms,i)),2) ); }
@@ -116,6 +117,22 @@ double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl
 	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
 	return 0.5*(fit_saxs + fit_cs + fit_prior)/T;
 	//return 0.5*( fit_cs + fit_prior)/T;
+=======
+
+	for( int i = 0; i< n; i++) { fit_cs +=
+	( pow( gsl_vector_get(cs_ens,i)  - gsl_vector_get(cs_exp,i), 2) /
+	pow((gsl_vector_get(cs_err,i) + gsl_vector_get(cs_rms,i)),2) ); }
+
+	/*for( int i = 0; i< N; i++) { fit_saxs +=
+	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2)
+	/ pow(gsl_vector_get(err_saxs,i),2) ); }*/
+
+	for( int i = 0; i < k-1; i++) { fit_prior +=
+	pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
+
+	//return 0.5*(fit_saxs + fit_cs + fit_prior)/T;
+	return 0.5*( fit_cs + fit_prior)/T;
+>>>>>>> 67505543cc3b641bad51bfe37bb49244530b19d6
 	//1/T comes from the multiple replica exchnages
 }
 
@@ -202,7 +219,7 @@ int main()
 	//Restart from already precaclculated vaules
 	read_success = fscanf(stdin, "%d", &again);
 	//After VBW run
-        read_success = fscanf(stdin, "%d", &vbw); 
+	read_success = fscanf(stdin, "%d", &vbw);
 	//Number of processors/temperatures
 	read_success = fscanf(stdin, "%d", &np); 
 	//Number of strcutures in ensemble
@@ -307,9 +324,9 @@ int main()
 	inFile = fopen(saxsfile,"r"); gsl_vector_fscanf(inFile,saxs_exp); fclose(inFile);
 	inFile = fopen(saxserrfile,"r"); gsl_vector_fscanf(inFile,err_saxs); fclose(inFile);
 	inFile = fopen(precsfile,"r"); gsl_matrix_fscanf(inFile,cs_pre);fclose(inFile);
-        inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
+    inFile = fopen(csfile,"r"); gsl_vector_fscanf(inFile,cs_exp); fclose(inFile);
 	inFile = fopen(csrmsfile,"r"); gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
-        inFile = fopen(cserrfile,"r"); gsl_vector_fscanf(inFile,cs_err); fclose(inFile);
+    inFile = fopen(cserrfile,"r"); gsl_vector_fscanf(inFile,cs_err); fclose(inFile);
 	inFile = fopen(mdfile,"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_matrix_fscanf(inFile,tostart); fclose(inFile); }
 
@@ -383,7 +400,7 @@ int main()
 
 	if (vbw==1) { for(int i = 0; i < np; i++) step_size[i] = 0.01; }	
 	//In general generates random variates with the given distribution and calculates energy based on these
-	if(again != 1)
+	if(again != 1 || vbw!=1)
 	{
 		cout << "Equilibration" << endl;
 		rep = 0;
