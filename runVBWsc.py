@@ -37,18 +37,21 @@ if __name__=="__main__":
                       help="Number of strcutural model [OBLIGATORY]")
 	parser.add_option("-p", "--priors", dest="priors",
                       help="Prior weights [OBLIGATORY]")
-        parser.add_option("-s", "--simulated", dest="simulated",
+    parser.add_option("-s", "--simulated", dest="simulated",
                       help="Simulated SAXS curves [OBLIGATORY]")
-        parser.add_option("-e", "--experimental", dest="experimental",
+    parser.add_option("-e", "--experimental", dest="experimental",
                       help="Experimental SAXS curves [OBLIGATORY]")
-        parser.add_option("-o", "--output", dest="output",
+    parser.add_option("-o", "--output", dest="output",
                       help="Output file [OBLIGATORY]")
-        parser.add_option("-c", "--cores", dest="nprocs",default = None,
+    parser.add_option("-c", "--cores", dest="nprocs",default = None,
                       type = 'int',
                       help="Number of proccessors [OBLIGATORY]")
 	parser.add_option("-w", "--weights", dest="weight_cut",default = None,
                       type = 'float',
                       help="Weight cutoff [OBLIGATORY]")
+    parser.add_option("-k", "--skip_vbw", dest="skip_vbw",default = 0,
+                      type = 'int',
+                      help="Skipping VBW step goes to model evidence directly")
 	options, args = parser.parse_args()
 	vbwSC.run_vbw(options.restart, options.nstruct, options.priors,\
 		options.measures, options.simulated, options.ncurves, options.experimental,\

@@ -324,7 +324,8 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 */
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut)
+        const std::string &outfile, const int &nprocs, const double &w_cut,
+        const int &skip_vbw)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -373,13 +374,13 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//Read prior files
 	inFile = fopen(mdfile.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	//Read scattering file
-        FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
-        gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
-        for (int i = 0;  i< N; i++) {
-       		gsl_vector_set(saxs_exp,i,gsl_matrix_get(saxs_file_matrix,i,1));
-       		gsl_vector_set(err_saxs,i,gsl_matrix_get(saxs_file_matrix,i,2));
-       	}
-       	fclose(inSAXSdat);
+    FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
+    gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
+    for (int i = 0;  i< N; i++) {
+        gsl_vector_set(saxs_exp,i,gsl_matrix_get(saxs_file_matrix,i,1));
+       	gsl_vector_set(err_saxs,i,gsl_matrix_get(saxs_file_matrix,i,2));
+    }
+    fclose(inSAXSdat);
 	
 	cout<<"Files reading finished"<<std::endl;
 	// initialize random number generators //
@@ -389,6 +390,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	Krng = gsl_rng_default;
 	r = gsl_rng_alloc(Krng); 
 	gsl_rng_set(r,time(NULL)); 
+
+	//Skipping VBW and going directly to model evidence integration
+	if (skip_vbw == 1) {
 
 	block *simAnBlock = block_alloc(k);
 	
@@ -680,9 +684,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
      }
     cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
-    double model_evd;
-    model_evd = mc_integrate(saxs_pre, saxs_exp, err_saxs, k, N);
-    cout<<"\nME: "<<model_evd<<std::endl;
-
+    }//Finish VBW section
+    else {
+        //TODO: Run this on edited saxs_pre (not on full)
+        double model_evd;
+        model_evd = mc_integrate(saxs_pre, saxs_exp, err_saxs, k, N);
+        cout<<"\nME: "<<model_evd<<std::endl;
+    }
 	gsl_rng_free (r);
 }
