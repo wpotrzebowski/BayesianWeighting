@@ -109,12 +109,6 @@ double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens,
 		        double f, int k, int N, double T)
 {
 	double fit_prior = 0.0, fit_saxs = 0.0;
-<<<<<<< HEAD
-	for( int i = 0; i< N; i++) { fit_saxs += 
-	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i), 2) 
-	/ pow(gsl_vector_get(err_saxs,i),2) ); }
-	for( int i = 0; i < k-1; i++) { fit_prior += pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
-=======
 
 	for( int i = 0; i< N; i++) { fit_saxs +=
 	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
@@ -123,7 +117,6 @@ double Energy(gsl_vector *h_ens, gsl_vector *saxs_ens,
 	for( int i = 0; i < k-1; i++) { fit_prior +=
 	pow( gsl_vector_get(h_ens,i) - gsl_vector_get(h_pre,i), 2) * f; }
 
->>>>>>> 67505543cc3b641bad51bfe37bb49244530b19d6
 	return 0.5*(fit_saxs + fit_prior)/T;
 	//1/T comes from the multiple replica exchnages
 }

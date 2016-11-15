@@ -272,12 +272,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
-        int ITERS_FIXED_T ;
-        double STEP_SIZE;
-        double K;
-        double T_INITIAL;
-        double MU_T;
-        double T_MIN;
+    int ITERS_FIXED_T ;
+    double STEP_SIZE;
+    double K;
+    double T_INITIAL;
+    double MU_T;
+    double T_MIN;
 
 	double alpha_zero;
 	double energy_current, energy_min;
@@ -297,7 +297,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		*saxs_ens_current = gsl_vector_alloc(N),
 		*memory = gsl_vector_alloc(k+2),
 		*bayesian_weight1 = gsl_vector_alloc(k),
-                *bayesian_weight1_current = gsl_vector_alloc(k);
+        *bayesian_weight1_current = gsl_vector_alloc(k);
 	
 	gsl_vector_set_zero(bayesian_weight1);
 	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
@@ -608,17 +608,21 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	///////////////////////////////////////////////////////////////////////	
 
 	//Calculating posterior expected divergence
-        //TODO: Make a cluean-up with vector
-        double jsd1_sum = 0.0;
-        double jsd1 = 0.0;
-        for (int s=0; s<sampling_step; s++) {
-                for (int j=0; j<k; j++) {
-                        gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
-                }
-                jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
-                jsd1_sum += sqrt(jsd1);
+    //TODO: Make a cluean-up with vector
+    double jsd1_sum = 0.0;
+    double jsd1 = 0.0;
+    for (int s=0; s<sampling_step; s++) {
+        for (int j=0; j<k; j++) {
+            gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
         }
-        cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
+        jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
+        jsd1_sum += sqrt(jsd1);
+     }
+    cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
+
+    double model_evd;
+    model_evd = mc_integrate(saxs_pre, saxs_exp, err_saxs, k, N);
+    cout<<"\nME: "<<model_evd<<std::endl;
 
 	gsl_rng_free (r);
 }
