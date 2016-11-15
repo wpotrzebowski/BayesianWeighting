@@ -1,7 +1,7 @@
 #include "VBW_sc.hh"
 
 
-double Energy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs,
+double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs,
                 double saxs_scale, int N)
 {
 	double fit_prior = 1.0, fit_saxs = 1.0;
@@ -53,7 +53,7 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
     }
     saxs_scale = SaxsScaleMean(weights,saxs_exp,err_saxs,N);
     gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, weights, 0.0, saxs_ens);
-    energy_trial+=Energy(saxs_ens,saxs_exp,err_saxs,saxs_scale,N);
+    energy_trial+=ModelEvidenceEnergy(saxs_ens,saxs_exp,err_saxs,saxs_scale,N);
   }
   energy_final/=Ntrials;
   gsl_rng_free (r);
