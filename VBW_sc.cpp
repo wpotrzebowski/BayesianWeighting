@@ -396,7 +396,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	gsl_rng_set(r,time(NULL)); 
 
 	//Skipping VBW and going directly to model evidence integration
-	if (skip_vbw == 1) {
+	//if (skip_vbw == 1) {
 
 	block *simAnBlock = block_alloc(k);
 	
@@ -688,10 +688,11 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
      }
     cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
-    }//Finish VBW section
-    else {
+    //}//Finish VBW section
+    //else {
         //Copy saxs_pre_round for monte carlo integration
-		int l = 0;
+		cout<<"\nSelected models: "<<L<<std::endl;
+		l = 0;
 		saxs_pre_selected = gsl_matrix_alloc(N,L);
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
@@ -706,6 +707,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         double model_evd;
         model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
         cout<<"\nME: "<<model_evd<<std::endl;
-    }
+    //}
 	gsl_rng_free (r);
 }
