@@ -341,6 +341,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     double MU_T;
     double T_MIN;
 
+    //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
+	int samples = 100;
+
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
@@ -363,8 +366,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         *bayesian_weight1_current = gsl_vector_alloc(k);
 	
 	gsl_vector_set_zero(bayesian_weight1);
-	//TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
-	int samples = 500;
 	gsl_matrix *weight_samples = gsl_matrix_alloc(samples,k);;
 
 	//Marks indexes that don't pass threshold filter
