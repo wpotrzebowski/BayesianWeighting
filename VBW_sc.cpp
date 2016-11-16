@@ -333,6 +333,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
+    int L;
     int ITERS_FIXED_T ;
     double STEP_SIZE;
     double K;
@@ -346,6 +347,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//double *cs_mix;
 	float acceptance_rate = 1.0;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
+ 	gsl_matrix *saxs_pre_selected;
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
 
@@ -423,7 +425,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	double smix;
 	//double cs_mix;
-        //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs) 	
+    //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)
 	#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 	for( int i = 0; i< k; i++) {
         	for (int j = 0; j < k; j++) {
@@ -505,8 +507,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	int overall_iteration = 0;
 	int sampling_step;
 	int last_updated;
-	int L = k;
 	int l, m, newL;
+    L = k;
 	//Energy from first iteration
 	while ( L > 1 ) {
 		cout<<"Starting "<<overall_iteration+1<<" iteration with "<<L<<" models"<<std::endl;
@@ -558,12 +560,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//Itertate over different step size
 		float dmin = 10;
 		for (double s=0.01; s<2.1; s+=0.1) { 
-                	params = {N_TRIES, ITERS_FIXED_T, s, K, T_INITIAL, MU_T, T_MIN};
+            params = {N_TRIES, ITERS_FIXED_T, s, K, T_INITIAL, MU_T, T_MIN};
 		
-                	//alphas are used from the previous simulation 
-                	gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
-                                block_copy, block_copy_construct, block_destroy,
-                                0, params, &acceptance_rate);
+             //alphas are used from the previous simulation
+             gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
+                block_copy, block_copy_construct, block_destroy,
+                0, params, &acceptance_rate);
 			if(fabs(acceptance_rate -0.5) < dmin) { 
 				dmin = fabs(acceptance_rate -0.5);
 				STEP_SIZE = s;		
@@ -572,13 +574,13 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		///////////////////////////////////////////////////////////////////////////////////////////
 		cout<<"STEP_SIZE set to: "<<STEP_SIZE<<std::endl;
 		N_TRIES = 1;
-        	ITERS_FIXED_T = 1; 
-        	STEP_SIZE = 1;
-        	K = 1.0;
-        	T_INITIAL = 1.0;
+        ITERS_FIXED_T = 1;
+        STEP_SIZE = 1;
+        K = 1.0;
+        T_INITIAL = 1.0;
 		MU_T = 1.00005;
 		T_MIN = 1.3888e-11;
-        	params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
+        params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 		//alphas are used from the previous simulation 
 		gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
@@ -619,7 +621,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		//Stoping simulations if weights don't change for more than delta (0.001)
 		//if (wdelta_count == newL) {cout<<"Simulations stopped because weights don't progress"<<std::endl; break;}
 
-		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre_round, w_ens_current, 0.0, saxs_ens_current);
 	    saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
 		//Structural library size after discarding structures with weight lower than cuttof
@@ -657,6 +659,9 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                	gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
+		//Copy saxs_pre_round for monte carlo integration
+		saxs_pre_selected = gsl_matrix_alloc(N,L);
+		gsl_matrix_memcpy(saxs_pre_selected,saxs_pre_round);
 		gsl_matrix_free(saxs_pre_round);
 		if ((overall_iteration-last_updated)>10) {
                         cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
@@ -688,7 +693,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     else {
         //TODO: Run this on edited saxs_pre (not on full)
         double model_evd;
-        model_evd = mc_integrate(saxs_pre, saxs_exp, err_saxs, k, N);
+        model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
         cout<<"\nME: "<<model_evd<<std::endl;
     }
 	gsl_rng_free (r);
