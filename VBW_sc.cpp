@@ -333,7 +333,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
-    int L;
     int ITERS_FIXED_T ;
     double STEP_SIZE;
     double K;
@@ -344,6 +343,8 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
 	int samples = 100;
 
+    //Number of models in single iteration
+    int L = k;
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
@@ -528,7 +529,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                 		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
-        	}
+        }
 		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
 		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
                 for( int i = 0; i < L; i++) {
@@ -660,9 +661,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
                	gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
-		//Copy saxs_pre_round for monte carlo integration
-		saxs_pre_selected = gsl_matrix_alloc(N,L);
-		gsl_matrix_memcpy(saxs_pre_selected,saxs_pre_round);
 		gsl_matrix_free(saxs_pre_round);
 		if ((overall_iteration-last_updated)>10) {
                         cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
@@ -692,6 +690,18 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
     }//Finish VBW section
     else {
+        //Copy saxs_pre_round for monte carlo integration
+		int l = 0;
+		saxs_pre_selected = gsl_matrix_alloc(N,L);
+		for (int i = 0; i < k; i++) {
+			if (removed_indexes[i]==false) {
+				for (int j = 0; j < N; j++) {
+					gsl_matrix_set(saxs_pre_selected,j,l,gsl_matrix_get(saxs_pre,j,i));
+				}
+         		l++;
+			}
+        }
+
         //TODO: Run this on edited saxs_pre (not on full)
         double model_evd;
         model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
