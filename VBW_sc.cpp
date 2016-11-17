@@ -281,7 +281,7 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 
   alphas = (double * ) malloc( k * sizeof( double ));
   samples = (double * ) malloc( k * sizeof( double ));
-  alpha_ens = (double * ) malloc( k * sizeof( double ));
+  //alpha_ens = (double * ) malloc( k * sizeof( double ));
   const gsl_rng_type *T;
   gsl_rng *r;
 
@@ -292,20 +292,11 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 
   double energy_trial=0.0;
   double saxs_scale = 0.0;
-  double alpha_zero;
   for (int i=0; i<Ntrials; i++) {
     gsl_ran_dirichlet(r, k, alphas, samples);
-    alpha_zero = 0.0;
-    for (int j = 0; j < k; j++) {
-        alpha_zero += samples[j];
-	}
 
-	for( int j = 0; j< N; j++) {
-	    alpha_ens[j] = 0.0;
-	    for (int l = 0; l < k; l++) {
-		    alpha_ens[j]+=gsl_matrix_get(saxs_pre,j,l)*samples[l];
-	    }
-	    gsl_vector_set(weights, j, alpha_ens[j]/alpha_zero);
+	for( int j = 0; j< k; j++) {
+	    gsl_vector_set(weights, j, samples[j]);
     }
     saxs_scale = SaxsScaleMean(weights,saxs_exp,err_saxs,N);
     gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, weights, 0.0, saxs_ens);
@@ -652,13 +643,13 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	
 		sampling_step = overall_iteration-1;
 		for (int jind=0; jind<k; jind++) {
-                    gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current,jind));
-                }
+            gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current,jind));
+        }
 
-                double niter = 1.0/double(sampling_step+1);
-               	gsl_vector_add(bayesian_weight1,w_ens_current);
-                gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
-               	gsl_vector_scale(bayesian_weight1_current,niter);
+        double niter = 1.0/double(sampling_step+1);
+        gsl_vector_add(bayesian_weight1,w_ens_current);
+        gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
+        gsl_vector_scale(bayesian_weight1_current,niter);
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
@@ -702,7 +693,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
          		l++;
 			}
         }
-
+        cout<<"PreSelected initialized succesfully"<<std::endl;
         //TODO: Run this on edited saxs_pre (not on full)
         double model_evd;
         model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
