@@ -260,7 +260,7 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs,
                 double saxs_scale, int N)
 {
-	double fit_prior = 1.0, fit_saxs = 1.0;
+	double fit_saxs = 1.0;
 
 	for( int i = 0; i< N; i++) { fit_saxs *=
 	exp( -(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
@@ -282,24 +282,28 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
   alphas = (double * ) malloc( k * sizeof( double ));
   samples = (double * ) malloc( k * sizeof( double ));
   //alpha_ens = (double * ) malloc( k * sizeof( double ));
-  const gsl_rng_type *T;
-  gsl_rng *r;
+  const gsl_rng_type *Krng;
+	gsl_rng *r;
+	gsl_rng_env_setup();
+	Krng = gsl_rng_default;
+	r = gsl_rng_alloc(Krng);
+    gsl_rng_set(r,time(NULL));
 
   gsl_vector *weights = gsl_vector_alloc(k);
   gsl_vector *saxs_ens = gsl_vector_alloc(N);
-
   for (int i = 0; i<k; i++) alphas[i] = 0.5;
-
+  gsl_ran_dirichlet(r, k, alphas, samples);
+  for( int j = 0; j< k; j++) {
+  }
   double energy_trial=0.0;
   double saxs_scale = 0.0;
   for (int i=0; i<Ntrials; i++) {
     gsl_ran_dirichlet(r, k, alphas, samples);
-
-	for( int j = 0; j< k; j++) {
+    for( int j = 0; j< k; j++) {
 	    gsl_vector_set(weights, j, samples[j]);
     }
-    saxs_scale = SaxsScaleMean(weights,saxs_exp,err_saxs,N);
     gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, weights, 0.0, saxs_ens);
+    saxs_scale = SaxsScaleMean(saxs_ens,saxs_exp,err_saxs,N);
     energy_trial+=ModelEvidenceEnergy(saxs_ens,saxs_exp,err_saxs,saxs_scale,N);
   }
   energy_final/=Ntrials;
@@ -332,7 +336,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     double T_MIN;
 
     //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
-	int samples = 100;
+	int samples = 500;
 
     //Number of models in single iteration
     int L = k;
@@ -342,7 +346,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//double *cs_mix;
 	float acceptance_rate = 1.0;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
- 	gsl_matrix *saxs_pre_selected;
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
 
@@ -684,7 +687,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         //Copy saxs_pre_round for monte carlo integration
 		cout<<"\nSelected models: "<<L<<std::endl;
 		l = 0;
-		saxs_pre_selected = gsl_matrix_alloc(N,L);
+		gsl_matrix *saxs_pre_selected = gsl_matrix_alloc(N,L);
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 				for (int j = 0; j < N; j++) {
