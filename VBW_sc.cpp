@@ -342,7 +342,6 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	//double *cs_mix;
 	float acceptance_rate = 1.0;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
- 	gsl_matrix *saxs_pre_selected;
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
 
@@ -684,9 +683,10 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         //Copy saxs_pre_round for monte carlo integration
 		cout<<"\nSelected models: "<<L<<std::endl;
 		l = 0;
-		saxs_pre_selected = gsl_matrix_alloc(N,L);
+		gsl_matrix *saxs_pre_selected = gsl_matrix_alloc(N,L);
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
+				cout<<"l index "<<l<<std::endl;
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_selected,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
