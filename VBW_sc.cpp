@@ -264,7 +264,8 @@ double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vecto
 
 	/*for( int i = 0; i< N; i++) { fit_saxs *=
 	exp( -(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
-	pow(gsl_vector_get(err_saxs,i),2))); }*/
+	pow(gsl_vector_get(err_saxs,i),2)));
+	fit_saxs /=sqrt(gsl_vector_get(err_saxs,i)) }*/
 
     for( int i = 0; i< N; i++) { fit_saxs +=
 	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
