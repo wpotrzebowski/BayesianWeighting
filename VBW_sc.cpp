@@ -260,15 +260,18 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs,
                 double saxs_scale, int N)
 {
-	double fit_saxs = 0.0;
+	double fit_saxs = 1.0;
 
-	/*for( int i = 0; i< N; i++) { fit_saxs *=
-	exp( -(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
-	pow(gsl_vector_get(err_saxs,i),2))); }*/
+        for( int i = 0; i< N; i++) { fit_saxs *= 
+        exp( -(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
+        pow(gsl_vector_get(err_saxs,i),2)))/
+	(gsl_vector_get(err_saxs,i)*2.5066282746310002); }
 
-    for( int i = 0; i< N; i++) { fit_saxs +=
+	/*double fit_saxs = 0.0;
+
+   	for( int i = 0; i< N; i++) { fit_saxs +=
 	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
-	pow(gsl_vector_get(err_saxs,i),2)); }
+	pow(gsl_vector_get(err_saxs,i),2)); }*/
 
 	return fit_saxs;
 }
@@ -281,7 +284,7 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
   double *alphas;
   double *samples;
   double *alpha_ens;
-  size_t Ntrials = 10000;
+  int Ntrials = 1000000;
 
   alphas = (double * ) malloc( k * sizeof( double ));
   samples = (double * ) malloc( k * sizeof( double ));
@@ -310,7 +313,8 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
     saxs_scale = SaxsScaleMean(saxs_ens,saxs_exp,err_saxs,N);
     energy_trial+=ModelEvidenceEnergy(saxs_ens,saxs_exp,err_saxs,saxs_scale,N);
   }
-  energy_final/=Ntrials;
+  cout<<"Energy final "<<energy_trial<<std::endl;
+  energy_final=energy_trial/Ntrials;
   gsl_rng_free (r);
   return energy_final;
 
@@ -340,7 +344,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     double T_MIN;
 
     //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
-	int samples = 500;
+	int samples = 100;
 
     //Number of models in single iteration
     int L = k;
