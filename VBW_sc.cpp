@@ -262,10 +262,10 @@ double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vecto
 {
 	double fit_saxs = 1.0;
 
-        for( int i = 0; i< N; i++) { fit_saxs *= 
+    for( int i = 0; i< N; i++) { fit_saxs *=
         exp( -(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
         pow(gsl_vector_get(err_saxs,i),2)))/
-	(gsl_vector_get(err_saxs,i)*2.5066282746310002); }
+	    (gsl_vector_get(err_saxs,i)*2.5066282746310002); }
 
 	/*double fit_saxs = 0.0;
 
@@ -398,7 +398,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	gsl_rng_set(r,time(NULL)); 
 
 	//Skipping VBW and going directly to model evidence integration
-	//if (skip_vbw == 1) {
+	if (skip_vbw != 1) {
 
 	block *simAnBlock = block_alloc(k);
 	
@@ -691,11 +691,24 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
 
     //}//Finish VBW section
-    //else {
+    }
+    //Model Evidence calculation
+    if (skip_vbw == 1)  L = k;
+
+    gsl_matrix *saxs_pre_selected = gsl_matrix_alloc(N,L);
+    if (skip_vbw == 1)  {
+        int l = 0;
+		for (int i = 0; i < k; i++) {
+		    cout<<"l index "<<l<<std::endl;
+			for (int j = 0; j < N; j++) {
+				gsl_matrix_set(saxs_pre_selected,j,l,gsl_matrix_get(saxs_pre,j,i));
+			}
+         	l++;
+        }
+    }
+    else {
         //Copy saxs_pre_round for monte carlo integration
-		cout<<"\nSelected models: "<<L<<std::endl;
-		l = 0;
-		gsl_matrix *saxs_pre_selected = gsl_matrix_alloc(N,L);
+		int l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 				cout<<"l index "<<l<<std::endl;
@@ -705,11 +718,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
          		l++;
 			}
         }
+    }
         cout<<"PreSelected initialized succesfully"<<std::endl;
         //TODO: Run this on edited saxs_pre (not on full)
         double model_evd;
         model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
         cout<<"\nME: "<<model_evd<<std::endl;
-    //}
+
 	gsl_rng_free (r);
 }
