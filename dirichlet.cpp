@@ -15,8 +15,8 @@ int main(void)
           a[1]=1.0;
 
             r=gsl_rng_alloc(gsl_rng_mt19937);
-              gsl_rng_set(r,1);
-                int i;
+            gsl_rng_set(r,1);
+            int i;
                   for (i=1;i<=10;i++) {
                         a[0]/=10.0;
                             a[1]/=10.0;
