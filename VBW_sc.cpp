@@ -260,20 +260,24 @@ void L_take_step(const gsl_rng * r, void *xp, double step_size)
 double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs,
                 double saxs_scale, int N)
 {
-	double fit_saxs = 1.0;
 
-    for( int i = 0; i< N; i++) { fit_saxs *=
-        exp( -(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
-        pow(gsl_vector_get(err_saxs,i),2)))/
-	    (gsl_vector_get(err_saxs,i)*2.5066282746310002); }
+	double exp_scale = 1/10e6;
+	double norm_term = 1.0; 
 
-	/*double fit_saxs = 0.0;
+	double fit_saxs = 0.0;
 
-   	for( int i = 0; i< N; i++) { fit_saxs +=
+   	for( int i = 0; i< N; i++) { 
+	
+	norm_term *= gsl_vector_get(err_saxs,i)*2.5066282746310002;
+
+	fit_saxs +=
 	(pow( saxs_scale*gsl_vector_get(saxs_ens,i) - gsl_vector_get(saxs_exp,i),2)/
-	pow(gsl_vector_get(err_saxs,i),2)); }*/
+	pow(gsl_vector_get(err_saxs,i),2)); 
 
-	return fit_saxs;
+	}
+
+	
+	return exp(-fit_saxs*exp_scale);
 }
 
 
