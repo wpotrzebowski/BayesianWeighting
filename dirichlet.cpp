@@ -1,6 +1,6 @@
 #include "gsl/gsl_rng.h"
 #include "gsl/gsl_randist.h"
-
+//Comment added to dirichlet testing
 
 int main(void)
 {
