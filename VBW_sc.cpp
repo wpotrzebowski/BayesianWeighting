@@ -110,14 +110,14 @@ double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err
 	return tempa/tempb;
 }
 
-double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T)
+/*double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T)
 {
 	double temp = 0.0;
 	for( int i = 0; i< N; i++) { 
 		temp += pow(gsl_vector_get(saxs_ens,i),2.0)/gsl_vector_get(err_saxs,i); 
 	}
 	return sqrt(T/temp);
-}
+}*/
 
 ///////////////////Simulated annealing functions////////////////////////////////
 double L_function(void *xp)  
