@@ -31,8 +31,9 @@ void block_copy(void *inp, void *outp) {
 	    out->saxsPrePtr = in->saxsPrePtr;
 	    out->saxsMixPtr = in->saxsMixPtr;
         out->saxsScale = in->saxsScale;
-
 	    out->numberProcs = in->numberProcs;
+	    out->rosettaPrior = in->rosettaPrior;
+	    out->wPre = in->wPre;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -135,6 +136,8 @@ double L_function(void *xp)
   double *mix_saxs = (double *) (x->saxsMixPtr);
   double saxs_scale = x->saxsScale;
   int nprocs = x->numberProcs;
+  gsl_vector *w_pre = (gsl_vector *) (x->wPre);
+  int rosettaPrior = x->rosettaPrior;
   size_t L = x->size;
   size_t N = saxs_exp->size;
   gsl_vector *weightsL = gsl_vector_alloc(N);
@@ -152,11 +155,19 @@ double L_function(void *xp)
   Lfunc+= ( gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2) );
 
   for (int i = 0; i < L; i++) {
-	Lfunc+=(log_gamma_2 - gsl_sf_lngamma( x->alphas[i] ));
+	if (rosettaPrior) {
+	    Lfunc+=(gsl_vector_get(w_pre,i) - gsl_sf_lngamma( x->alphas[i] ));
+	} else {
+	    Lfunc+=(log_gamma_2 - gsl_sf_lngamma( x->alphas[i] ));
+    }
   }
 
   for (int i = 0; i < L; i++) {
+    if (rosettaPrior) {
+        Lfunc+=((x->alphas[i]-gsl_vector_get(w_pre, i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
+    } else {
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
+    }
   }
 
 
@@ -332,7 +343,7 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
         const std::string &outfile, const int &nprocs, const double &w_cut,
-        const int &skip_vbw)
+        const int &skip_vbw, const int &rosettaPrior)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -406,18 +417,22 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	block *simAnBlock = block_alloc(k);
 	
-	//Initialize alphas with prior values
+	//Initialize alphas with flat prior values
 	for (int i = 0; i < k; i++) {
-		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
+		//simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
+		simAnBlock->alphas[i] = 1.0/k;
 	}
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
+	simAnBlock->wPre = w_pre;
 	//simAnBlock->csExpPtr = cs_exp;
     //simAnBlock->csErrPtr = cs_err;
 	//simAnBlock->csRMSPtr = cs_rms;
     //simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
+	simAnBlock->rosettaPrior = rosettaPrior;
+
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	// gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
 	//TODO: Scaling is not required here?
@@ -445,7 +460,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 			/*for (int m = 0; m < n; m++) {
                                 cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
                         }*/
-                        saxs_mix[i*k+j] = smix;
+            saxs_mix[i*k+j] = smix;
 			//cs_mix[i*k+j] = cs_mix;
         	}
 	}
@@ -479,7 +494,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		K = 1.0;
 		T_INITIAL = 2.0; 
 		MU_T = 1.000025;
-       		T_MIN = 2.7776e-11;
+       	T_MIN = 2.7776e-11;
 		params = {N_TRIES, ITERS_FIXED_T, STEP_SIZE, K, T_INITIAL, MU_T, T_MIN};
 
 		//Define params before equilibration and after for next rounds
@@ -523,16 +538,18 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
+		gsl_vector *w_pre_round = gsl_vector_alloc(L);
 		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double )); 
 
 
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
+				gsl_vector_set(w_pre_round,l,gsl_vector_get(w_pre,i));
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
-                		simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
+                	simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
         }
@@ -555,16 +572,17 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
-
+        simAnBlock->wPre = w_pre_round;
+        simAnBlock->rosettaPrior = rosettaPrior;
 		simAnBlock->numberProcs = nprocs;	
 		
 		////////////////////////Short equilibration period to find step size/////////////////////////
 		N_TRIES = 1;
-                ITERS_FIXED_T = 1000;
-                K = 1.0;
-                T_INITIAL = 1.0;
-                MU_T = 1.00005;
-                T_MIN = 1.0;
+        ITERS_FIXED_T = 1000;
+        K = 1.0;
+        T_INITIAL = 1.0;
+        MU_T = 1.00005;
+        T_MIN = 1.0;
 		//Itertate over different step size
 		float dmin = 10;
 		for (double s=0.01; s<2.1; s+=0.1) { 
@@ -597,7 +615,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 		energy_current = L_function(simAnBlock);
 
-                //If L_function doesn't improve after 10 iterations exit program
+        //If L_function doesn't improve after 10 iterations exit program
 		newL = 0;
 		m = 0; 
 		alpha_zero = 0.0;
@@ -622,7 +640,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		
 		//int wdelta_count = 0;
 		for ( int i = 0; i < k; i++ ) {
-                        if (removed_indexes[i]==false) {
+            if (removed_indexes[i]==false) {
 				gsl_vector_set( w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/new_alpha_zero );
 			}
 		}
@@ -640,19 +658,19 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	
 		if (energy_current < energy_min) {	
 			energy_min = energy_current;
-                        last_updated = overall_iteration;
+            last_updated = overall_iteration;
 
 			for( int l = 0; l < k; l++) {
-                		gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
-        		}
+                gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
+        	}
 
-        		gsl_vector_set(memory, k, saxs_scale_current);
-        		gsl_vector_set(memory, k+1, energy_current);
+        	gsl_vector_set(memory, k, saxs_scale_current);
+        	gsl_vector_set(memory, k+1, energy_current);
 
 			ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
-        		//All weights plus saxs scale factor
-        		for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
-        		output <<gsl_vector_get(memory,k+1)<<endl;
+        	//All weights plus saxs scale factor
+        	for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
+        	output <<gsl_vector_get(memory,k+1)<<endl;
 			output.close();
 		}
 	
@@ -668,10 +686,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
+		gsl_vector_free(w_pre_round);
+
 		if ((overall_iteration-last_updated)>10) {
-                        cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
-                        break;
-                }
+            cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
+            break;
+        }
 		
 		if (overall_iteration == samples) {
 			cout<<"Maximum number of iteration has been reached. Stopping simulation"<<std::endl;

@@ -27,6 +27,8 @@ typedef struct {
         void *saxsMixPtr;
         double saxsScale;
         int numberProcs;
+        void *wPre;
+        int rosettaPrior;
         } block;
 
 block * block_alloc(size_t n);
@@ -43,11 +45,12 @@ double ientropy(const gsl_vector *w, int k);
 double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k);
 void find_square_root(gsl_vector *w_ens, gsl_vector *w_ens1, double ct, double ct_prim, int k);
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N);
-double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T);
+//double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T);
 double L_function(void *xp);
 double L_distance(void *xp, void *yp);
 void L_print (void *xp);
 void L_take_step(const gsl_rng * r, void *xp, double step_size);
 void run_vbw(const int &again, const int &k, const std::string &mdfile,
         const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw);
+        const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw,
+        const int &rosettaPrior);
