@@ -152,13 +152,17 @@ double L_function(void *xp)
   for (int i = 0; i < L; i++)
 	  alpha_zero+=x->alphas[i];
 
-  Lfunc+= ( gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2) );
-
+  //TODO: Is the L/2
+  if (rosettaPrior) {
+        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(alpha_zero);
+  } else {
+        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
+  }
   for (int i = 0; i < L; i++) {
 	if (rosettaPrior) {
-	    Lfunc+=(gsl_vector_get(w_pre,i) - gsl_sf_lngamma( x->alphas[i] ));
+	    Lfunc+=gsl_sf_lngamma(gsl_vector_get(w_pre,i)) - gsl_sf_lngamma( x->alphas[i] );
 	} else {
-	    Lfunc+=(log_gamma_2 - gsl_sf_lngamma( x->alphas[i] ));
+	    Lfunc+=log_gamma_2 - gsl_sf_lngamma( x->alphas[i] );
     }
   }
 
