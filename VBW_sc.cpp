@@ -69,38 +69,6 @@ double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 }
 
 
-void find_square_root(gsl_vector *w_ens, gsl_vector *w_ens1, double ct, double ct_prim, int k)
-{
-	double ksum;
-	double w_prim_sum;
-	double cn_inv, wm2_inv, cm_prim, cn_prim_inv, w_prim, kd;
-	gsl_vector *kconst = gsl_vector_alloc(k-1);
-
-	double wm = gsl_vector_get(w_ens,k-1);
-	if (wm< 0.0001) wm = 0.0001;
-
-	cn_inv = (2-wm)/ct;
-	wm2_inv = 1/(wm*wm);
-        	
-	ksum = 0;
-	for(int i = 0; i < (k-1); i++) {
-		kd = gsl_vector_get(w_ens,i)*cn_inv*wm2_inv;
-    		gsl_vector_set(kconst,i,kd);
-    		ksum +=kd;
-	}
-
-	cm_prim = (sqrt(1+8*ksum*ct_prim)-1)/(4*ksum);
-	cn_prim_inv = 2/(ct_prim+cm_prim);
-	w_prim_sum = 0;
-	for(int i = 0; i < (k-1); i++) {
-		w_prim = gsl_vector_get(kconst,i)*cm_prim*cm_prim*cn_prim_inv;	
-		gsl_vector_set(w_ens1,i,w_prim);
-		w_prim_sum +=w_prim;
-        }
-	gsl_vector_set(w_ens1,k-1,cm_prim*cn_prim_inv);
-	gsl_vector_free(kconst);
-}
-
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N)
 {
 	double tempa = 0.0, tempb = 0.0;
@@ -110,15 +78,6 @@ double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err
 	}
 	return tempa/tempb;
 }
-
-/*double SaxsScaleStandardDeviation(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N, double T)
-{
-	double temp = 0.0;
-	for( int i = 0; i< N; i++) { 
-		temp += pow(gsl_vector_get(saxs_ens,i),2.0)/gsl_vector_get(err_saxs,i); 
-	}
-	return sqrt(T/temp);
-}*/
 
 ///////////////////Simulated annealing functions////////////////////////////////
 double L_function(void *xp)  
@@ -143,18 +102,21 @@ double L_function(void *xp)
   gsl_vector *weightsL = gsl_vector_alloc(N);
   int rep = 0;
   double alpha_zero = 0.0;
+  double energy_zero = 0.0;
   double alpha_ens[N];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0;
   double fit_saxs=0.0, fit_saxs_mix = 0.0;
   double fit_cs=0.0, fit_cs_mix = 0.0;
   
-  for (int i = 0; i < L; i++)
+  for (int i = 0; i < L; i++) {
 	  alpha_zero+=x->alphas[i];
+	  energy_zero+=gsl_vector_get(w_pre,i);
+  }
 
-  //TODO: Is the L/2
   if (rosettaPrior) {
-        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(alpha_zero);
+        //TODO: This term disappears then, so something may be wrong here
+        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero_zero);
   } else {
         Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
   }
@@ -168,7 +130,7 @@ double L_function(void *xp)
 
   for (int i = 0; i < L; i++) {
     if (rosettaPrior) {
-        Lfunc+=((x->alphas[i]-gsl_vector_get(w_pre, i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
+        Lfunc+=((x->alphas[i]+gsl_vector_get(w_pre, i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
     } else {
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
     }
