@@ -116,7 +116,7 @@ double L_function(void *xp)
 
   if (rosettaPrior) {
         //TODO: This term disappears then, so something may be wrong here
-        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero_zero);
+        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero);
   } else {
         Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
   }
