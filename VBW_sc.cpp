@@ -130,7 +130,7 @@ double L_function(void *xp)
 
   for (int i = 0; i < L; i++) {
     if (rosettaPrior) {
-        Lfunc+=((x->alphas[i]+gsl_vector_get(w_pre, i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
+        Lfunc+=(x->alphas[i]-gsl_vector_get(w_pre,i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero));
     } else {
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
     }
