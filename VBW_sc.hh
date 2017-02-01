@@ -27,7 +27,7 @@ typedef struct {
         void *saxsMixPtr;
         double saxsScale;
         int numberProcs;
-        void *wPre;
+        void *alphaPre;
         int rosettaPrior;
         } block;
 
@@ -48,7 +48,7 @@ double L_function(void *xp);
 double L_distance(void *xp, void *yp);
 void L_print (void *xp);
 void L_take_step(const gsl_rng * r, void *xp, double step_size);
-void run_vbw(const int &again, const int &k, const std::string &mdfile,
+void run_vbw(const int &again, const int &k, const std::string &pre_weight_file, const std::string &pre_alpha_file,
         const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
         const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw,
         const int &rosettaPrior);

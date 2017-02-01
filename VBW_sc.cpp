@@ -33,7 +33,7 @@ void block_copy(void *inp, void *outp) {
         out->saxsScale = in->saxsScale;
 	    out->numberProcs = in->numberProcs;
 	    out->rosettaPrior = in->rosettaPrior;
-	    out->wPre = in->wPre;
+	    out->alphaPre = in->alphaPre;
 	}
 
 void * block_copy_construct(void *xp) {
@@ -95,7 +95,7 @@ double L_function(void *xp)
   double *mix_saxs = (double *) (x->saxsMixPtr);
   double saxs_scale = x->saxsScale;
   int nprocs = x->numberProcs;
-  gsl_vector *w_pre = (gsl_vector *) (x->wPre);
+  gsl_vector *alpha_pre = (gsl_vector *) (x->alphaPre);
   int rosettaPrior = x->rosettaPrior;
   size_t L = x->size;
   size_t N = saxs_exp->size;
@@ -111,7 +111,7 @@ double L_function(void *xp)
   
   for (int i = 0; i < L; i++) {
 	  alpha_zero+=x->alphas[i];
-	  energy_zero+=gsl_vector_get(w_pre,i);
+	  energy_zero+=gsl_vector_get(alpha_pre,i);
   }
 
   if (rosettaPrior) {
@@ -122,7 +122,7 @@ double L_function(void *xp)
   }
   for (int i = 0; i < L; i++) {
 	if (rosettaPrior) {
-	    Lfunc+=gsl_sf_lngamma(gsl_vector_get(w_pre,i)) - gsl_sf_lngamma( x->alphas[i] );
+	    Lfunc+=gsl_sf_lngamma(gsl_vector_get(alpha_pre,i)) - gsl_sf_lngamma( x->alphas[i] );
 	} else {
 	    Lfunc+=log_gamma_2 - gsl_sf_lngamma( x->alphas[i] );
     }
@@ -130,7 +130,7 @@ double L_function(void *xp)
 
   for (int i = 0; i < L; i++) {
     if (rosettaPrior) {
-        Lfunc+=(x->alphas[i]-gsl_vector_get(w_pre,i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero));
+        Lfunc+=(x->alphas[i]-gsl_vector_get(alpha_pre,i))*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero));
     } else {
         Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
     }
@@ -306,7 +306,7 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 2. Run simulated anealing to minimize function 
 3. Iteratively remove structures with weights lower than wcut
 */
-void run_vbw(const int &again, const int &k, const std::string &mdfile,
+void run_vbw(const int &again, const int &k, const std::string &pre_weight_file, const std::string &pre_alpha_file,
         const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
         const std::string &outfile, const int &nprocs, const double &w_cut,
         const int &skip_vbw, const int &rosettaPrior)
@@ -325,7 +325,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
     double T_MIN;
 
     //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
-	int samples = 100;
+	int samples = 500;
 
     //Number of models in single iteration
     int L = k;
@@ -340,6 +340,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
+		*alpha_pre = gsl_vector_alloc(k),
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
@@ -358,8 +359,10 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 	// Read in data from files //
 	FILE * inFile = fopen(presaxsfile.c_str(),"r"); gsl_matrix_fscanf(inFile,saxs_pre);fclose(inFile);
-	//Read prior files
-	inFile = fopen(mdfile.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+	//Read prior weights
+	inFile = fopen(pre_weight_file.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
+	//Read prior alphas
+	inFile = fopen(pre_alpha_file.c_str(),"r"); gsl_vector_fscanf(inFile,alpha_pre); fclose(inFile);
 	//Read scattering file
     FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
@@ -385,13 +388,12 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 	
 	//Initialize alphas with flat prior values
 	for (int i = 0; i < k; i++) {
-		//simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
-		simAnBlock->alphas[i] = 1.0/k;
+		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
-	simAnBlock->wPre = w_pre;
+	simAnBlock->alphaPre = alpha_pre;
 	//simAnBlock->csExpPtr = cs_exp;
     //simAnBlock->csErrPtr = cs_err;
 	//simAnBlock->csRMSPtr = cs_rms;
@@ -504,14 +506,14 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		gsl_vector *w_pre_round = gsl_vector_alloc(L);
+		gsl_vector *alpha_pre_round = gsl_vector_alloc(L);
 		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double )); 
 
 
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
-				gsl_vector_set(w_pre_round,l,gsl_vector_get(w_pre,i));
+				gsl_vector_set(alpha_pre_round,l,gsl_vector_get(alpha_pre,i));
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
@@ -538,7 +540,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
         simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
-        simAnBlock->wPre = w_pre_round;
+        simAnBlock->alphaPre = alpha_pre_round;
         simAnBlock->rosettaPrior = rosettaPrior;
 		simAnBlock->numberProcs = nprocs;	
 		
@@ -652,7 +654,7 @@ void run_vbw(const int &again, const int &k, const std::string &mdfile,
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
-		gsl_vector_free(w_pre_round);
+		gsl_vector_free(alpha_pre_round);
 
 		if ((overall_iteration-last_updated)>10) {
             cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
