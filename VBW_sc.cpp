@@ -549,17 +549,24 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         }
 		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
 		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
-                for( int i = 0; i < L; i++) {
-                        for (int j = 0; j < L; j++) {
-				smix = 0.0;
-                                for (int m = 0; m < N; m++) {
-					smix+=gsl_matrix_get(saxs_pre_round,m,i)*gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
-        	                }
-	                        saxs_mix_round[i*L+j]=smix;
-                       	}
+        for( int i = 0; i < L; i++) {
+            for (int j = 0; j < L; j++) {
+		         smix = 0.0;
+                 for (int m = 0; m < N; m++) {
+		            smix+=gsl_matrix_get(saxs_pre_round,m,i)
+		            *gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
+                 }
+	        saxs_mix_round[i*L+j]=smix;
+           	}
 		}
 
+        cout<<"Alphas: ";
         calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, L);
+        for ( int i = 0; i < L; i++) {
+                cout<<gsl_vector_get(alpha_pre_round,i)<<" ";
+        }
+        cout<<std::endl;
+
 		//saxs_exp and err_saxs are independent of run
         simAnBlock->saxsExpPtr = saxs_exp;
         simAnBlock->saxsErrPtr = err_saxs;
