@@ -115,11 +115,11 @@ double L_function(void *xp)
   }
 
   if (rosettaPrior) {
-        //TODO: This term disappears then, so something may be wrong here
-        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero);
+    Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero);
   } else {
-        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
+    Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
   }
+
   for (int i = 0; i < L; i++) {
 	if (rosettaPrior) {
 	    Lfunc+=gsl_sf_lngamma(gsl_vector_get(alpha_pre,i)) - gsl_sf_lngamma( x->alphas[i] );
@@ -301,14 +301,34 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 
 }
 
+void calculate_alpha_priors(gsl_vector* rosetta_engeries,
+                            gsl_vector* alpha_priors, int L ) {
+
+    double energy_sum = 0.0;
+    double kBT = 0.0019872041*293;
+
+    for( int j = 0; j< L; j++) {
+        energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
+    }
+
+    double c_ref = -kBT*log(0.5*L/energy_sum);
+
+    for( int j = 0; j< L; j++) {
+        double alpha = (exp(-(c_ref + gsl_vector_get(rosetta_engeries,j))/kBT));
+        gsl_vector_set(alpha_priors,j,alpha);
+    }
+}
+
 /*Overall algorithm
 1. Read experimental data and parameter priors
 2. Run simulated anealing to minimize function 
 3. Iteratively remove structures with weights lower than wcut
 */
-void run_vbw(const int &again, const int &k, const std::string &pre_weight_file, const std::string &pre_alpha_file,
-        const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut,
+void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
+        const std::string &structure_energy_file, const int &N,
+        const std::string &presaxsfile, const int &Ncurves,
+        const std::string &curvesfile, const std::string &outfile,
+        const int &nprocs, const double &w_cut,
         const int &skip_vbw, const int &rosettaPrior)
 {
 	//////////////////// Init section /////////////////////////////////////
@@ -341,6 +361,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
 		*alpha_pre = gsl_vector_alloc(k),
+		*rosetta_engeries = gsl_vector_alloc(k),
 		*w_pre = gsl_vector_alloc(k),
 		*w_ens_current = gsl_vector_alloc(k),
 		*alpha_ens_current = gsl_vector_alloc(k),
@@ -362,7 +383,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	//Read prior weights
 	inFile = fopen(pre_weight_file.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	//Read prior alphas
-	inFile = fopen(pre_alpha_file.c_str(),"r"); gsl_vector_fscanf(inFile,alpha_pre); fclose(inFile);
+	inFile = fopen(structure_energy_file.c_str(),"r"); gsl_vector_fscanf(inFile,rosetta_engeries); fclose(inFile);
 	//Read scattering file
     FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
@@ -390,6 +411,9 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	for (int i = 0; i < k; i++) {
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
+
+	calculate_alpha_priors(rosetta_engeries, alpha_pre, k);
+	//Initiallize alphas based on rosetta energies
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
@@ -507,13 +531,15 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
 		gsl_vector *alpha_pre_round = gsl_vector_alloc(L);
+		gsl_vector *rosetta_engeries_round = gsl_vector_alloc(L);
 		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double )); 
 
 
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
-				gsl_vector_set(alpha_pre_round,l,gsl_vector_get(alpha_pre,i));
+			    //TODO: Here we need to call function that recalculates alphas_pre
+				gsl_vector_set(rosetta_engeries_round,l,gsl_vector_get(rosetta_engeries,i));
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
@@ -532,7 +558,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	                        saxs_mix_round[i*L+j]=smix;
                        	}
 		}
-                
+
+        calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, L);
 		//saxs_exp and err_saxs are independent of run
         simAnBlock->saxsExpPtr = saxs_exp;
         simAnBlock->saxsErrPtr = err_saxs;
@@ -655,6 +682,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
 		gsl_vector_free(alpha_pre_round);
+        gsl_vector_free(rosetta_engeries_round);
 
 		if ((overall_iteration-last_updated)>10) {
             cout<<"Energy hasn't decreased for 10 iterations. Stopping simulations"<<std::endl;
