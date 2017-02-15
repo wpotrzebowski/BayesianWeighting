@@ -302,7 +302,8 @@ double mc_integrate(gsl_matrix *saxs_pre, gsl_vector *saxs_exp,
 }
 
 void calculate_alpha_priors(gsl_vector* rosetta_engeries,
-                            gsl_vector* alpha_priors, int L ) {
+                            gsl_vector* alpha_priors,
+                            double reference_energy, int L ) {
 
     double energy_sum = 0.0;
     double kBT = 0.0019872041*293;
@@ -311,8 +312,8 @@ void calculate_alpha_priors(gsl_vector* rosetta_engeries,
         energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
     }
 
-    double c_ref = -kBT*log(0.5*L/energy_sum);
-
+    //double c_ref = -kBT*log(0.5*L/energy_sum);
+    double c_ref = reference_energy;
     for( int j = 0; j< L; j++) {
         double alpha = (exp(-(c_ref + gsl_vector_get(rosetta_engeries,j))/kBT));
         gsl_vector_set(alpha_priors,j,alpha);
@@ -329,7 +330,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         const std::string &presaxsfile, const int &Ncurves,
         const std::string &curvesfile, const std::string &outfile,
         const int &nprocs, const double &w_cut,
-        const int &skip_vbw, const int &rosettaPrior)
+        const int &skip_vbw, const int &rosettaPrior, const double &reference_energy)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -348,7 +349,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	int samples = 500;
 
     ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
-    
+
     //Number of models in single iteration
     int L = k;
 	double alpha_zero;
@@ -414,7 +415,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
 
-	calculate_alpha_priors(rosetta_engeries, alpha_pre, k);
+	calculate_alpha_priors(rosetta_engeries, alpha_pre, reference_energy, k);
 	//Initiallize alphas based on rosetta energies
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
@@ -562,7 +563,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		}
 
         cout<<"Alphas: ";
-        calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, L);
+        calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, reference_energy, L);
         for ( int i = 0; i < L; i++) {
                 cout<<gsl_vector_get(alpha_pre_round,i)<<" ";
         }
