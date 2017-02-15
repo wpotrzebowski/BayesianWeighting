@@ -347,6 +347,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
 	int samples = 500;
 
+    ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
+    
     //Number of models in single iteration
     int L = k;
 	double alpha_zero;
@@ -443,18 +445,18 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)
 	#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 	for( int i = 0; i< k; i++) {
-        	for (int j = 0; j < k; j++) {
-			smix = 0.0;
-			//cs_mix = 0.0;
-                	for (int m = 0; m < N; m++) {
-				smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs,m),2);   
-			}
-			/*for (int m = 0; m < n; m++) {
-                                cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
-                        }*/
-            saxs_mix[i*k+j] = smix;
-			//cs_mix[i*k+j] = cs_mix;
-        	}
+        for (int j = 0; j < k; j++) {
+		smix = 0.0;
+		//cs_mix = 0.0;
+        for (int m = 0; m < N; m++) {
+			smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs,m),2);
+		}
+		/*for (int m = 0; m < n; m++) {
+            cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
+        }*/
+        saxs_mix[i*k+j] = smix;
+		//cs_mix[i*k+j] = cs_mix;
+        }
 	}
 	/*gettimeofday(&t2, NULL);
 	// compute and print the elapsed time in millisec
@@ -466,7 +468,6 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	//simAnBlock->csMixPtr = cs_mix;
 	///////////////////////////////////////////////////////////////////////
 
-	cout<<"Values have been set"<<std::endl;
 	///////////////////////////////////////////////////////////////////////
 	if(again == 1) { 
 		inFile = fopen("restart.dat","r"); 
@@ -478,7 +479,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	}
 	else {	
 		////////////////////// First iteration ////////////////////////////////
-		cout<<"Equilibration started..."<<std::endl;
+		cout<<"Equilibration starting..."<<std::endl;
 		
 		N_TRIES = 1; //Seems to be inactive?
 		ITERS_FIXED_T = 1;
@@ -669,11 +670,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         	gsl_vector_set(memory, k, saxs_scale_current);
         	gsl_vector_set(memory, k+1, energy_current);
 
-			ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
         	//All weights plus saxs scale factor
         	for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
         	output <<gsl_vector_get(memory,k+1)<<endl;
-			output.close();
+			//output.close();
 		}
 	
 		sampling_step = overall_iteration-1;
@@ -715,8 +715,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
         jsd1_sum += sqrt(jsd1);
      }
-    cout<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
-
+    output<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
     //}//Finish VBW section
     }
     //Model Evidence calculation
@@ -726,7 +725,6 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     if (skip_vbw == 1)  {
         int l = 0;
 		for (int i = 0; i < k; i++) {
-		    cout<<"l index "<<l<<std::endl;
 			for (int j = 0; j < N; j++) {
 				gsl_matrix_set(saxs_pre_selected,j,l,gsl_matrix_get(saxs_pre,j,i));
 			}
@@ -738,7 +736,6 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		int l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
-				cout<<"l index "<<l<<std::endl;
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_selected,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
@@ -746,11 +743,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 			}
         }
     }
-        cout<<"PreSelected initialized succesfully"<<std::endl;
-        //TODO: Run this on edited saxs_pre (not on full)
-        double model_evd;
-        model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
-        cout<<"\nME: "<<model_evd<<std::endl;
+    double model_evd;
+    model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
+    output<<"\nModel Evidence: "<<model_evd<<std::endl;
+    output.close();
 
 	gsl_rng_free (r);
 }
