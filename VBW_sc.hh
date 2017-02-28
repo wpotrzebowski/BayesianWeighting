@@ -20,6 +20,7 @@
 typedef struct {
         size_t size;
         double *alphas;
+        double shiftEnergy;
         void *saxsExpPtr;
         void *saxsErrPtr;
         void *saxsEnsPtr;

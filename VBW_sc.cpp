@@ -24,6 +24,7 @@ void block_copy(void *inp, void *outp) {
        	for(i=0; i< in->size; i++){
                out->alphas[i] = in->alphas[i];
        	}
+       	out->shiftEnergy = in->shiftEnergy;
        	out->size = in->size;
 	    out->saxsExpPtr = in->saxsExpPtr;
 	    out->saxsErrPtr = in->saxsErrPtr;
@@ -205,6 +206,7 @@ double L_distance(void *xp, void *yp)
   double vector_distance = 0.0;
   for (int i=0; i<x->size; i++) {
 	vector_distance+=gsl_pow_2(x->alphas[i]-y->alphas[i]);
+	vector_distance+=gsl_pow_2(x->shiftEnergy-y->shiftEnergy);
   }
   return sqrt(vector_distance);
 }
@@ -226,11 +228,17 @@ void L_print (void *xp)
 
 void L_take_step(const gsl_rng * r, void *xp, double step_size)
 {
+    //beta = 1.0/kBT in kcal
+    double beta = 1.717472947;
   	block * x = (block *) xp;
   	//The index of which alpha should be modified
   	int i = (int) round(gsl_rng_uniform(r)*x->size);
-  	double u = x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size);
-	x->alphas[i] = GSL_MAX(0.001, u); 
+
+	double s = x->shiftEnergy+gsl_ran_gaussian_ziggurat(r,step_size);
+	x->shiftEnergy = GSL_MAX(0.001, s);
+
+    double u = x->alphas[i]+gsl_ran_gaussian_ziggurat(r,step_size);
+	x->alphas[i] = exp(-x->shiftEnergy*beta)*GSL_MAX(0.001, u);
 }
 
 
@@ -357,6 +365,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	double *saxs_mix; 
 	//double *cs_mix;
 	float acceptance_rate = 1.0;
+	double shiftEnergyInternal = 0.0;
+
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
@@ -414,7 +424,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	for (int i = 0; i < k; i++) {
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
-
+    simAnBlock->shiftEnergy = reference_energy;
 	calculate_alpha_priors(rosetta_engeries, alpha_pre, reference_energy, k);
 	//Initiallize alphas based on rosetta energies
 	simAnBlock->saxsExpPtr = saxs_exp;
@@ -505,6 +515,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
                 	gsl_vector_set(w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
         	}
 		energy_min = L_function(simAnBlock);
+		shiftEnergyInternal = simAnBlock->shiftEnergy;
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 		saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
@@ -545,10 +556,12 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
-                	simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
+                simAnBlock->alphas[l] = gsl_vector_get(alpha_ens_current,i);
 				l++;
 			}
         }
+
+        simAnBlock->shiftEnergy = shiftEnergyInternal;
 		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
 		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
         for( int i = 0; i < L; i++) {
