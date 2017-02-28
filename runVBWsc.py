@@ -37,6 +37,8 @@ if __name__=="__main__":
                       help="Number of strcutural model [OBLIGATORY]")
     parser.add_option("-p", "--priors", dest="priors",
                       help="Prior weights [OBLIGATORY]")
+    parser.add_option("-a", "--alphas_pre", dest="alpha_priors",
+                      help="Prior weights [OBLIGATORY]")
     parser.add_option("-s", "--simulated", dest="simulated",
                       help="Simulated SAXS curves [OBLIGATORY]")
     parser.add_option("-e", "--experimental", dest="experimental",
@@ -52,7 +54,14 @@ if __name__=="__main__":
     parser.add_option("-k", "--skip_vbw", dest="skip_vbw",default = 0,
                       type = 'int',
                       help="Skipping VBW step goes to model evidence directly")
+    parser.add_option("-R", "--rosetta_energies", dest="rosetta_energies",default = 0,
+                      type = 'int',
+                      help="Using Rosetta Energy are used to set prior")
+    parser.add_option("-E", "--reference_energy", dest="reference_energy",default = 0.0,
+                      type = 'float',
+                      help="Using reference Energy are used to set prior")
     options, args = parser.parse_args()
-    vbwSC.run_vbw(options.restart, options.nstruct, options.priors,\
+    vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.alpha_priors,\
 		options.measures, options.simulated, options.ncurves, options.experimental,\
-		options.output, options.nprocs, options.weight_cut, options.skip_vbw)
+		options.output, options.nprocs, options.weight_cut, options.skip_vbw,
+        options.rosetta_energies, options.reference_energy)
