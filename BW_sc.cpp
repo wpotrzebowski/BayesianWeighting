@@ -197,7 +197,7 @@ int main()
 	//Restart from already precaclculated vaules
 	read_success = fscanf(stdin, "%d", &again);
 	//After VBW run
-        read_success = fscanf(stdin, "%d", &vbw); 
+    read_success = fscanf(stdin, "%d", &vbw);
 	//Number of processors/temperatures
 	read_success = fscanf(stdin, "%d", &np); 
 	//Number of strcutures in ensemble
@@ -376,7 +376,8 @@ int main()
 				f[rep] = gsl_ran_exponential(r[rep], temperature[rep]/Force(h_ens_current[rep],h_pre,k)) + fL;
 
 				//Sampling scaling factor for each scattering curve	
-				saxs_scale_current[rep] = SaxsScaleMean(saxs_ens_current[rep],saxs_exp,err_saxs,N) + gsl_ran_gaussian(r[rep],SaxsScaleStandardDeviation(saxs_ens_current[rep],saxs_exp,err_saxs,N,temperature[rep]));
+				saxs_scale_current[rep] = SaxsScaleMean(saxs_ens_current[rep],saxs_exp,err_saxs,N)
+				+ gsl_ran_gaussian(r[rep],SaxsScaleStandardDeviation(saxs_ens_current[rep],saxs_exp,err_saxs,N,temperature[rep]));
 
 				RandomStepH(h_ens_current[rep],h_ens_trial[rep],
 					w_ens_trial[rep],  
@@ -432,7 +433,8 @@ int main()
 			for(int j = 0; j < swap_frequency; j++)
 			{
 				f[rep] = gsl_ran_exponential(r[rep], temperature[rep]/Force(h_ens_current[rep],h_pre,k)) + fL;
-				saxs_scale_current[rep] = SaxsScaleMean(saxs_ens_current[rep],saxs_exp,err_saxs,N) + gsl_ran_gaussian(r[rep],SaxsScaleStandardDeviation(saxs_ens_current[rep],saxs_exp,err_saxs,N,temperature[rep]));
+				saxs_scale_current[rep] = SaxsScaleMean(saxs_ens_current[rep],saxs_exp,err_saxs,N)
+				+ gsl_ran_gaussian(r[rep],SaxsScaleStandardDeviation(saxs_ens_current[rep],saxs_exp,err_saxs,N,temperature[rep]));
 
 				RandomStepH(h_ens_current[rep],h_ens_trial[rep],
 						w_ens_trial[rep], 
@@ -463,8 +465,8 @@ int main()
 					//PDM turned off at the moment
 					/*if(rep ==0) {
 						for (int jind=0; jind<k; jind++) {
-                                                	gsl_matrix_set(weight_samples,pdm_step,jind,gsl_vector_get(w_ens_current[rep],jind));
-                                        	}
+                           	gsl_matrix_set(weight_samples,pdm_step,jind,gsl_vector_get(w_ens_current[rep],jind));
+                        }
 						gsl_vector_memcpy(w_ens_last_accepted,w_ens_current[0]);
 						pdm_step++;
 					}*/
