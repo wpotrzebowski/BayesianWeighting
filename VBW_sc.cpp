@@ -342,7 +342,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         const std::string &presaxsfile, const int &Ncurves,
         const std::string &curvesfile, const std::string &outfile,
         const int &nprocs, const double &w_cut,
-        const int &skip_vbw, const int &rosettaPrior, const double &reference_energy)
+        const int &skip_vbw, const int &rosettaPrior)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -369,7 +369,6 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	double *saxs_mix; 
 	//double *cs_mix;
 	float acceptance_rate = 1.0;
-	double shiftEnergyInternal = reference_energy;
 
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
@@ -419,6 +418,15 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	r = gsl_rng_alloc(Krng); 
 	gsl_rng_set(r,time(NULL)); 
 
+    //Setting initial reference energy equal to number_of_models/2
+	double energy_sum = 0.0;
+    double kBT = 0.0019872041*293;
+
+    for( int j = 0; j< L; j++) {
+        energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
+    }
+	double shiftEnergyInternal = -kBT*log(0.5*L/energy_sum);
+
 	//Skipping VBW and going directly to model evidence integration
 	if (skip_vbw != 1) {
 
@@ -428,7 +436,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	for (int i = 0; i < k; i++) {
 		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
 	}
-    simAnBlock->shiftEnergy = reference_energy;
+    simAnBlock->shiftEnergy = shiftEnergyInternal;
 	calculate_alpha_priors(rosetta_engeries, alpha_pre, k);
 	//Initiallize alphas based on rosetta energies
 	simAnBlock->saxsExpPtr = saxs_exp;
@@ -566,6 +574,15 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 			}
         }
 
+        //The value is recalculated based on number of structures
+        //Alternatively the value from the previous iteration can be taken.
+        energy_sum = 0.0;
+
+        for( int j = 0; j< L; j++) {
+            energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
+        }
+	    shiftEnergyInternal = -kBT*log(0.5*L/energy_sum);
+
         simAnBlock->shiftEnergy = shiftEnergyInternal;
 		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
 		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
@@ -583,7 +600,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         cout<<"Alphas: ";
         calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, L);
         for ( int i = 0; i < L; i++) {
-                double beta = 1.717472947;
+                const double beta = 1.717472947;
                 double shiftEnergyExp = exp(-simAnBlock->shiftEnergy*beta);
                 cout<<shiftEnergyExp*gsl_vector_get(alpha_pre_round,i)<<" ";
         }
