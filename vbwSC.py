@@ -104,6 +104,10 @@ class block(_object):
     __swig_getmethods__["alphas"] = _vbwSC.block_alphas_get
     if _newclass:
         alphas = _swig_property(_vbwSC.block_alphas_get, _vbwSC.block_alphas_set)
+    __swig_setmethods__["shiftEnergy"] = _vbwSC.block_shiftEnergy_set
+    __swig_getmethods__["shiftEnergy"] = _vbwSC.block_shiftEnergy_get
+    if _newclass:
+        shiftEnergy = _swig_property(_vbwSC.block_shiftEnergy_get, _vbwSC.block_shiftEnergy_set)
     __swig_setmethods__["saxsExpPtr"] = _vbwSC.block_saxsExpPtr_set
     __swig_getmethods__["saxsExpPtr"] = _vbwSC.block_saxsExpPtr_get
     if _newclass:
@@ -132,6 +136,14 @@ class block(_object):
     __swig_getmethods__["numberProcs"] = _vbwSC.block_numberProcs_get
     if _newclass:
         numberProcs = _swig_property(_vbwSC.block_numberProcs_get, _vbwSC.block_numberProcs_set)
+    __swig_setmethods__["alphaPre"] = _vbwSC.block_alphaPre_set
+    __swig_getmethods__["alphaPre"] = _vbwSC.block_alphaPre_get
+    if _newclass:
+        alphaPre = _swig_property(_vbwSC.block_alphaPre_get, _vbwSC.block_alphaPre_set)
+    __swig_setmethods__["rosettaPrior"] = _vbwSC.block_rosettaPrior_set
+    __swig_getmethods__["rosettaPrior"] = _vbwSC.block_rosettaPrior_get
+    if _newclass:
+        rosettaPrior = _swig_property(_vbwSC.block_rosettaPrior_get, _vbwSC.block_rosettaPrior_set)
 
     def __init__(self):
         this = _vbwSC.new_block()
@@ -173,17 +185,9 @@ def jensen_shannon_div(w_a, w_b, k):
     return _vbwSC.jensen_shannon_div(w_a, w_b, k)
 jensen_shannon_div = _vbwSC.jensen_shannon_div
 
-def find_square_root(w_ens, w_ens1, ct, ct_prim, k):
-    return _vbwSC.find_square_root(w_ens, w_ens1, ct, ct_prim, k)
-find_square_root = _vbwSC.find_square_root
-
 def SaxsScaleMean(saxs_ens, saxs_exp, err_saxs, N):
     return _vbwSC.SaxsScaleMean(saxs_ens, saxs_exp, err_saxs, N)
 SaxsScaleMean = _vbwSC.SaxsScaleMean
-
-def SaxsScaleStandardDeviation(saxs_ens, saxs_exp, err_saxs, N, T):
-    return _vbwSC.SaxsScaleStandardDeviation(saxs_ens, saxs_exp, err_saxs, N, T)
-SaxsScaleStandardDeviation = _vbwSC.SaxsScaleStandardDeviation
 
 def L_function(xp):
     return _vbwSC.L_function(xp)
@@ -201,8 +205,8 @@ def L_take_step(r, xp, step_size):
     return _vbwSC.L_take_step(r, xp, step_size)
 L_take_step = _vbwSC.L_take_step
 
-def run_vbw(again, k, mdfile, N, presaxsfile, Ncurves, curvesfile, outfile, nprocs, w_cut, skip_vbw):
-    return _vbwSC.run_vbw(again, k, mdfile, N, presaxsfile, Ncurves, curvesfile, outfile, nprocs, w_cut, skip_vbw)
+def run_vbw(again, k, pre_weight_file, pre_alpha_file, N, presaxsfile, Ncurves, curvesfile, outfile, nprocs, w_cut, skip_vbw, rosettaPrior):
+    return _vbwSC.run_vbw(again, k, pre_weight_file, pre_alpha_file, N, presaxsfile, Ncurves, curvesfile, outfile, nprocs, w_cut, skip_vbw, rosettaPrior)
 run_vbw = _vbwSC.run_vbw
 # This file is compatible with both classic and new-style classes.
 

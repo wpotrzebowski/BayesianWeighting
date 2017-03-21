@@ -1,6 +1,7 @@
 *.pyc
 *.o
 *.so
+./VBW_mc.o
 ./vbw.py
 ./vbw_wrap.cxx
 ./.git/hooks/applypatch-msg.sample
