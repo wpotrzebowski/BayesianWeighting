@@ -9,14 +9,12 @@ __maintainer__ = "Wojtek Potrzebowski"
 __email__ = "Wojciech.Potrzebowski@biochemistry.lu.se"
 
 import optparse
-import os
-import sys
 import vbwSC
 
 if __name__=="__main__":
     doc = """
-	    Python interface to Variational Bayesian algorithm
-	    Usage: python runVBW.py --help
+        Python interface to Variational Bayesian algorithm
+        Usage: python runVBW.py --help
     """
     print doc
     usage = "usage: %prog [options] args"
@@ -57,11 +55,9 @@ if __name__=="__main__":
     parser.add_option("-R", "--rosetta_energies", dest="rosetta_energies",default = 0,
                       type = 'int',
                       help="Using Rosetta Energy are used to set prior")
-    parser.add_option("-E", "--reference_energy", dest="reference_energy",default = 0.0,
-                      type = 'float',
-                      help="Using reference Energy are used to set prior")
+
     options, args = parser.parse_args()
     vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.alpha_priors,\
-		options.measures, options.simulated, options.ncurves, options.experimental,\
-		options.output, options.nprocs, options.weight_cut, options.skip_vbw,
-        options.rosetta_energies, options.reference_energy)
+                  options.measures, options.simulated, options.ncurves, options.experimental,\
+                  options.output, options.nprocs, options.weight_cut, options.skip_vbw,
+                  options.rosetta_energies)
