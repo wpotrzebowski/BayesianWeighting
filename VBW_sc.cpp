@@ -332,6 +332,19 @@ void calculate_alpha_priors(gsl_vector* rosetta_engeries,
     }
 }
 
+double calculate_chi2(gsl_matrix* saxs_pre, gsl_vector* w_ens_current,
+                gsl_vector* saxs_ens_current, gsl_vector* saxs_exp,
+                gsl_vector* err_saxs, int L, int N) {
+    gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
+	double saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
+	double chi2 = 0.0;
+	for (int i=0; i < L; i++) {
+	    chi2+=pow((gsl_vector_get(saxs_exp, i) - saxs_scale_current*gsl_vector_get(saxs_ens_current, i)),2)
+	    / pow(gsl_vector_get(err_saxs, i),2);
+	}
+	return chi2;
+}
+
 /*Overall algorithm
 1. Read experimental data and parameter priors
 2. Run simulated anealing to minimize function 
@@ -383,7 +396,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		*alpha_ens_current = gsl_vector_alloc(k),
 		*tostart = gsl_vector_alloc(k+2),
 		*saxs_ens_current = gsl_vector_alloc(N),
-		*memory = gsl_vector_alloc(k+2),
+		*memory = gsl_vector_alloc(k+4),
 		*bayesian_weight1 = gsl_vector_alloc(k),
         *bayesian_weight1_current = gsl_vector_alloc(k);
 	
@@ -699,24 +712,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		
 		block_destroy(simAnBlock);	
 		overall_iteration++;
-	
-		if (energy_current < energy_min) {	
-			energy_min = energy_current;
-            last_updated = overall_iteration;
 
-			for( int l = 0; l < k; l++) {
-                gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
-        	}
+	    double chi2 = calculate_chi2(saxs_pre,  w_ens_current, saxs_ens_current,
+                                saxs_exp, err_saxs, L, N);
 
-        	gsl_vector_set(memory, k, saxs_scale_current);
-        	gsl_vector_set(memory, k+1, energy_current);
-
-        	//All weights plus saxs scale factor
-        	for( int j = 0; j < k + 1; j++) output << gsl_vector_get(memory,j) << " ";
-        	output <<gsl_vector_get(memory,k+1)<<endl;
-			//output.close();
-		}
-	
 		sampling_step = overall_iteration-1;
 		for (int jind=0; jind<k; jind++) {
             gsl_matrix_set(weight_samples,sampling_step,jind,gsl_vector_get(w_ens_current,jind));
@@ -726,6 +725,38 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         gsl_vector_add(bayesian_weight1,w_ens_current);
         gsl_vector_memcpy(bayesian_weight1_current,bayesian_weight1);
         gsl_vector_scale(bayesian_weight1_current,niter);
+
+
+        //Calculating posterior expected divergence
+        //TODO: Make a cluean-up with vector
+        double jsd1_sum = 0.0;
+        double jsd1 = 0.0;
+        for (int s=0; s<sampling_step; s++) {
+            for (int j=0; j<k; j++) {
+                gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
+            }
+            jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
+            jsd1_sum += sqrt(jsd1);
+        }
+
+		if (energy_current < energy_min) {
+			energy_min = energy_current;
+            last_updated = overall_iteration;
+
+			for( int l = 0; l < k; l++) {
+                gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
+        	}
+
+        	gsl_vector_set(memory, k, saxs_scale_current);
+        	gsl_vector_set(memory, k+1, energy_current);
+            gsl_vector_set(memory, k+2, chi2);
+            gsl_vector_set(memory, k+3, jsd1_sum/double(sampling_step));
+        	//All weights scale factor, energy_currenr and chi2
+        	for( int j = 0; j < k + 3; j++) output << gsl_vector_get(memory,j) << " ";
+        	output <<gsl_vector_get(memory,k+3)<<endl;
+			//output.close();
+		}
+
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
@@ -745,18 +776,6 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	}	
 	///////////////////////////////////////////////////////////////////////	
 
-	//Calculating posterior expected divergence
-    //TODO: Make a cluean-up with vector
-    double jsd1_sum = 0.0;
-    double jsd1 = 0.0;
-    for (int s=0; s<sampling_step; s++) {
-        for (int j=0; j<k; j++) {
-            gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
-        }
-        jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
-        jsd1_sum += sqrt(jsd1);
-     }
-    output<<"\nPED1: "<<jsd1_sum/double(sampling_step)<<" from "<<sampling_step<<" steps"<<std::endl;
     //}//Finish VBW section
     }
     //Model Evidence calculation
@@ -784,6 +803,11 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 			}
         }
     }
+
+    double chi2 = calculate_chi2(saxs_pre,  w_ens_current, saxs_ens_current,
+                                saxs_exp, err_saxs, L, N);
+    output<<"\nChi2 "<<chi2<<std::endl;
+
     double model_evd;
     model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
     output<<"\nModel Evidence: "<<model_evd<<std::endl;
