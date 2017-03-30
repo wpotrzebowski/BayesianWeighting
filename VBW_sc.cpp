@@ -431,6 +431,9 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	double energy_sum = 0.0;
     double kBT = 0.0019872041*293;
 
+    //Jenso-Shannon Divergance
+    double jsd1_sum = 0.0;
+
     for( int j = 0; j< L; j++) {
         energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
     }
@@ -724,15 +727,15 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 
         //Calculating posterior expected divergence
         //TODO: Make a cluean-up with vector
-        double jsd1_sum = 0.0;
+        //double jsd1_sum = 0.0;
         double jsd1 = 0.0;
-        for (int s=0; s<sampling_step; s++) {
-            for (int j=0; j<k; j++) {
-                gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
-            }
-            jsd1 = jensen_shannon_div(bayesian_weight1_current,bayesian_weight1,k);
-            jsd1_sum += sqrt(jsd1);
-        }
+        //for (int s=0; s<sampling_step; s++) {
+        //for (int j=0; j<k; j++) {
+        // gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
+        //}
+        jsd1 = jensen_shannon_div(bayesian_weight1_current,w_ens_current,k);
+        jsd1_sum += sqrt(jsd1);
+        //}
 
 		if (energy_current < energy_min) {
 			energy_min = energy_current;
@@ -745,7 +748,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         	gsl_vector_set(memory, k, saxs_scale_current);
         	gsl_vector_set(memory, k+1, energy_current);
             gsl_vector_set(memory, k+2, chi2);
-            gsl_vector_set(memory, k+3, jsd1_sum/double(sampling_step));
+            gsl_vector_set(memory, k+3, jsd1);
         	//All weights scale factor, energy_currenr and chi2
         	for( int j = 0; j < k + 3; j++) output << gsl_vector_get(memory,j) << " ";
         	output <<gsl_vector_get(memory,k+3)<<endl;
@@ -771,6 +774,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	}	
 	///////////////////////////////////////////////////////////////////////	
 
+    output<<"Jesen-Shannon Div "<<jsd1_sum/double(sampling_step)<<std::endl;
     //}//Finish VBW section
     }
     //Model Evidence calculation
