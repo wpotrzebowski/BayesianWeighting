@@ -332,13 +332,9 @@ void calculate_alpha_priors(gsl_vector* rosetta_engeries,
     }
 }
 
-double calculate_chi2(gsl_matrix* saxs_pre, gsl_vector* w_ens_current,
-                gsl_vector* saxs_ens_current, gsl_vector* saxs_exp,
-                gsl_vector* err_saxs, int L, int N) {
-    gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
-	double saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-	double chi2 = 0.0;
-	for (int i=0; i < L; i++) {
+double calculate_chi2( gsl_vector* saxs_ens_current, double saxs_scale_current, gsl_vector* saxs_exp, gsl_vector* err_saxs,  int N) {
+    double chi2 = 0.0;
+	for (int i=0; i < N; i++) {
 	    chi2+=pow((gsl_vector_get(saxs_exp, i) - saxs_scale_current*gsl_vector_get(saxs_ens_current, i)),2)
 	    / pow(gsl_vector_get(err_saxs, i),2);
 	}
@@ -713,8 +709,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		block_destroy(simAnBlock);	
 		overall_iteration++;
 
-	    double chi2 = calculate_chi2(saxs_pre,  w_ens_current, saxs_ens_current,
-                                saxs_exp, err_saxs, L, N);
+	    double chi2 = calculate_chi2(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
 
 		sampling_step = overall_iteration-1;
 		for (int jind=0; jind<k; jind++) {
@@ -804,8 +799,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         }
     }
 
-    double chi2 = calculate_chi2(saxs_pre,  w_ens_current, saxs_ens_current,
-                                saxs_exp, err_saxs, L, N);
+    double chi2 = calculate_chi2(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
     output<<"\nChi2 "<<chi2<<std::endl;
 
     double model_evd;
