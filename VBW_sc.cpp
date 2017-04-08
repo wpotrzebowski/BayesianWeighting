@@ -359,7 +359,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 
 	gsl_siman_params_t params;
 	int N_TRIES; //Seems to be inactive?
-    int ITERS_FIXED_T ;
+    int ITERS_FIXED_T;
     double STEP_SIZE;
     double K;
     double T_INITIAL;
@@ -408,7 +408,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	//Read prior weights
 	inFile = fopen(pre_weight_file.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	//Read prior alphas
-	inFile = fopen(structure_energy_file.c_str(),"r"); gsl_vector_fscanf(inFile,rosetta_engeries); fclose(inFile);
+	if (rosettaPrior) {
+	    inFile = fopen(structure_energy_file.c_str(),"r");
+	    gsl_vector_fscanf(inFile,rosetta_engeries); fclose(inFile);
+	}
 	//Read scattering file
     FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
@@ -430,27 +433,26 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     //Setting initial reference energy equal to number_of_models/2
 	double energy_sum = 0.0;
     double kBT = 0.0019872041*293;
+    double shiftEnergyInternal;
 
     //Jenso-Shannon Divergance
     double jsd1_sum = 0.0;
 
-    for( int j = 0; j< L; j++) {
-        energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
-    }
-	double shiftEnergyInternal = -kBT*log(0.5*L/energy_sum);
-
-	//Skipping VBW and going directly to model evidence integration
+    //Skipping VBW and going directly to model evidence integration
 	if (skip_vbw != 1) {
 
-	block *simAnBlock = block_alloc(k);
-	
-	//Initialize alphas with flat prior values
-	for (int i = 0; i < k; i++) {
-		simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
-	}
-    simAnBlock->shiftEnergy = shiftEnergyInternal;
-	calculate_alpha_priors(rosetta_engeries, alpha_pre, k);
+    //Setting priors based on energies
+	if (rosettaPrior) {
+        for( int j = 0; j< L; j++) {
+            energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
+        }
+	    shiftEnergyInternal = -kBT*log(0.5*L/energy_sum);
+    }
+    calculate_alpha_priors(rosetta_engeries, alpha_pre, k);
+
+    block *simAnBlock = block_alloc(k);
 	//Initiallize alphas based on rosetta energies
+	simAnBlock->shiftEnergy = shiftEnergyInternal;
 	simAnBlock->saxsExpPtr = saxs_exp;
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
@@ -461,6 +463,11 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     //simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
 	simAnBlock->rosettaPrior = rosettaPrior;
+
+    //Initialize alphas with flat prior values
+	for (int i = 0; i < k; i++) {
+        simAnBlock->alphas[i] = gsl_vector_get(w_pre,i);
+	}
 
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
 	// gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
@@ -481,16 +488,18 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
 	for( int i = 0; i< k; i++) {
         for (int j = 0; j < k; j++) {
-		smix = 0.0;
-		//cs_mix = 0.0;
-        for (int m = 0; m < N; m++) {
-			smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)/pow(gsl_vector_get(err_saxs,m),2);
-		}
-		/*for (int m = 0; m < n; m++) {
-            cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)/(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
-        }*/
-        saxs_mix[i*k+j] = smix;
-		//cs_mix[i*k+j] = cs_mix;
+		    smix = 0.0;
+		    //cs_mix = 0.0;
+            for (int m = 0; m < N; m++) {
+			    smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)
+			    /pow(gsl_vector_get(err_saxs,m),2);
+		    }
+		    /*for (int m = 0; m < n; m++) {
+                cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)
+                /(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
+            }*/
+            saxs_mix[i*k+j] = smix;
+		    //cs_mix[i*k+j] = cs_mix;
         }
 	}
 	/*gettimeofday(&t2, NULL);
@@ -539,8 +548,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
             gsl_vector_set(w_ens_current,i,gsl_vector_get(alpha_ens_current,i)/alpha_zero);
         }
 		energy_min = L_function(simAnBlock);
-		shiftEnergyInternal = simAnBlock->shiftEnergy;
-		cout<<"Shift energy: "<<shiftEnergyInternal<<std::endl;
+		if (rosettaPrior) {
+    	    shiftEnergyInternal = simAnBlock->shiftEnergy;
+		    cout<<"Shift energy: "<<shiftEnergyInternal<<std::endl;
+	    }
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 		saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
@@ -568,16 +579,18 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
-		gsl_vector *alpha_pre_round = gsl_vector_alloc(L);
+    	gsl_vector *alpha_pre_round = gsl_vector_alloc(L);
 		gsl_vector *rosetta_engeries_round = gsl_vector_alloc(L);
-		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double )); 
-
+		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double ));
 
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 			    //TODO: Here we need to call function that recalculates alphas_pre
-				gsl_vector_set(rosetta_engeries_round,l,gsl_vector_get(rosetta_engeries,i));
+				if (rosettaPrior) {
+				    gsl_vector_set(rosetta_engeries_round,l,gsl_vector_get(rosetta_engeries,i));
+				}
+
 				for (int j = 0; j < N; j++) {
 					gsl_matrix_set(saxs_pre_round,j,l,gsl_matrix_get(saxs_pre,j,i));
 				}
@@ -594,8 +607,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
             energy_sum += exp(-gsl_vector_get(rosetta_engeries,j)/kBT);
         }
 	    shiftEnergyInternal = -kBT*log(0.5*L/energy_sum);
-
         simAnBlock->shiftEnergy = shiftEnergyInternal;
+
 		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
 		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
         for( int i = 0; i < L; i++) {
@@ -609,17 +622,17 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
            	}
 		}
 
-        cout<<"Alphas: ";
-        calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, L);
-        for ( int i = 0; i < L; i++) {
+        if (rosettaPrior) {
+            cout<<"Alphas: ";
+            calculate_alpha_priors(rosetta_engeries_round, alpha_pre_round, L);
+            for ( int i = 0; i < L; i++) {
                 const double beta = 1.717472947;
                 double shiftEnergyExp = exp(-simAnBlock->shiftEnergy*beta);
                 cout<<shiftEnergyExp*gsl_vector_get(alpha_pre_round,i)<<" ";
+            }
+            cout<<std::endl;
+            cout<<"Shift energy: "<<shiftEnergyInternal<<std::endl;
         }
-        cout<<std::endl;
-
-        cout<<"Shift energy: "<<shiftEnergyInternal<<std::endl;
-
 		//saxs_exp and err_saxs are independent of run
         simAnBlock->saxsExpPtr = saxs_exp;
         simAnBlock->saxsErrPtr = err_saxs;
