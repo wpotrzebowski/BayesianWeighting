@@ -1,5 +1,4 @@
 #include "VBW_sc.hh"
-#include "LFuncGpu.hh"
 
 using namespace std;
 const double pi = M_PI;
@@ -49,13 +48,6 @@ void block_destroy(void *xp){
 }
 
 ///////////////////////////////Simulated annealing handling finished////////////
-
-double ientropy(const gsl_vector *w, int i) {
-	double ie = 0.0;
-	//for (int i=0; i<k; i++) 
-	ie = gsl_vector_get(w,i)*log2(gsl_vector_get(w,i));
-	return ie;
-}
 
 double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k) {
 
