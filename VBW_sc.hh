@@ -1,3 +1,8 @@
+/*******************************************************************************
+Bayesian weight inference for single scattering curve
+Author: Wojciech Potrzebowski
+*******************************************************************************/
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -9,7 +14,6 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_statistics.h>
-//#include <gsl/gsl_siman.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_sf.h>
 #include <sys/time.h>
@@ -42,14 +46,12 @@ void * block_copy_construct(void *xp);
 
 void block_destroy(void *xp);
 
-double ientropy(const gsl_vector *w, int k);
 double jensen_shannon_div(const gsl_vector *w_a, const gsl_vector *w_b, int k);
 double SaxsScaleMean(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vector *err_saxs, int N);
 double L_function(void *xp);
 double L_distance(void *xp, void *yp);
 void L_print (void *xp);
 void L_take_step(const gsl_rng * r, void *xp, double step_size);
-void run_vbw(const int &again, const int &k, const std::string &pre_weight_file, const std::string &pre_alpha_file,
+void run_vbw(const int &again, const int &k, const std::string &pre_weight_file, const std::string &structure_energies_file,
         const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw,
-        const int &rosettaPrior);
+        const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw);

@@ -35,29 +35,27 @@ if __name__=="__main__":
                       help="Number of strcutural model [OBLIGATORY]")
     parser.add_option("-p", "--priors", dest="priors",
                       help="Prior weights [OBLIGATORY]")
-    parser.add_option("-a", "--alphas_pre", dest="alpha_priors",
-                      help="Prior weights [OBLIGATORY]")
+    parser.add_option("-a", "--strcuture_energies", dest="structure_energies", default="None",
+                      help="Energies of strcutures used to setup priors")
     parser.add_option("-s", "--simulated", dest="simulated",
                       help="Simulated SAXS curves [OBLIGATORY]")
     parser.add_option("-e", "--experimental", dest="experimental",
                       help="Experimental SAXS curves [OBLIGATORY]")
     parser.add_option("-o", "--output", dest="output",
                       help="Output file [OBLIGATORY]")
-    parser.add_option("-c", "--cores", dest="nprocs",default = None,
+    parser.add_option("-c", "--cores", dest="nprocs",default = 1,
                       type = 'int',
-                      help="Number of proccessors [OBLIGATORY]")
+                      help="Number of proccessors")
     parser.add_option("-w", "--weights", dest="weight_cut",default = None,
                       type = 'float',
                       help="Weight cutoff [OBLIGATORY]")
-    parser.add_option("-k", "--skip_vbw", dest="skip_vbw",default = 0,
-                      type = 'int',
+    parser.add_option("-k", "--skip_vbw", dest="skip_vbw",default = False,
+                      type = 'Boolean',
                       help="Skipping VBW step goes to model evidence directly")
-    parser.add_option("-R", "--rosetta_energies", dest="rosetta_energies",default = 0,
-                      type = 'int',
-                      help="Using Rosetta Energy are used to set prior")
+    parser.add_option("-C", "--chemical_shifts", dest="chemical_shifts",default = "None",
+                      help="Including chemical shifts in the calculation of likelihood functions")
 
     options, args = parser.parse_args()
-    vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.alpha_priors,\
+    vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.structure_energies,\
                   options.measures, options.simulated, options.ncurves, options.experimental,\
-                  options.output, options.nprocs, options.weight_cut, options.skip_vbw,
-                  options.rosetta_energies)
+                  options.output, options.nprocs, options.weight_cut, options.skip_vbw)

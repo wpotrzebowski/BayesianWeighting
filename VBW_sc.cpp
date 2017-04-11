@@ -1,3 +1,8 @@
+/*******************************************************************************
+Bayesian weight inference for single scattering curve
+Author: Wojciech Potrzebowski
+*******************************************************************************/
+
 #include "VBW_sc.hh"
 
 using namespace std;
@@ -343,7 +348,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         const std::string &presaxsfile, const int &Ncurves,
         const std::string &curvesfile, const std::string &outfile,
         const int &nprocs, const double &w_cut,
-        const int &skip_vbw, const int &rosettaPrior)
+        const int &skip_vbw)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -368,9 +373,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	double alpha_zero;
 	double energy_current, energy_min;
 	double *saxs_mix; 
-	//double *cs_mix;
+	double *cs_mix;
 	float acceptance_rate = 1.0;
-
+    bool rosettaPrior = false;
+    bool chemicalShiftsOn = false;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
@@ -400,10 +406,21 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	//Read prior weights
 	inFile = fopen(pre_weight_file.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	//Read prior alphas
-	if (rosettaPrior) {
+	if (structure_energy_file.c_str() != "None") {
+        rosettaPrior = true;
 	    inFile = fopen(structure_energy_file.c_str(),"r");
-	    gsl_vector_fscanf(inFile,rosetta_engeries); fclose(inFile);
+	    gsl_vector_fscanf(inFile,rosetta_engeries);
+	    fclose(inFile);
 	}
+
+/*    //Loading chemical shift files
+    if (chemical_shifts_file.c_str() != "None") {
+        chemicalShiftsOn = true;
+	    inFile = fopen(chemical_shifts_file.c_str(),"r");
+	    gsl_vector_fscanf(inFile,rosetta_engeries);
+	    fclose(inFile);
+	}
+*/
 	//Read scattering file
     FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
@@ -431,7 +448,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     double jsd1_sum = 0.0;
 
     //Skipping VBW and going directly to model evidence integration
-	if (skip_vbw != 1) {
+	if (skip_vbw) {
 
     //Setting priors based on energies
 	if (rosettaPrior) {
