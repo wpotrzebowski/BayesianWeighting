@@ -29,10 +29,10 @@ if __name__=="__main__":
                       help="Number of strcutural model [OBLIGATORY]")
     parser.add_option("-m", "--measures", dest="measures",default = None,
                       type = 'int',
-                      help="Number of measure on which algorithm is evaluated [OBLIGATORY]")
+                      help="Number of measurements on which algorithm is evaluated [OBLIGATORY]")
     parser.add_option("-v", "--number_of_curves", dest="ncurves",default = 1,
                       type = 'int',
-                      help="Number of strcutural model [OBLIGATORY]")
+                      help="Number of strcutural models [OBLIGATORY]")
     parser.add_option("-p", "--priors", dest="priors",
                       help="Prior weights [OBLIGATORY]")
     parser.add_option("-a", "--strcuture_energies", dest="structure_energies", default="None",
