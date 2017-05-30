@@ -30,6 +30,9 @@ if __name__=="__main__":
     parser.add_option("-m", "--measures", dest="measures",default = None,
                       type = 'int',
                       help="Number of measurements on which algorithm is evaluated [OBLIGATORY]")
+    parser.add_option("-M", "--cs_measures", dest="cs_measures",default = None,
+                      type = 'int',
+                      help="Number of chemical shifts measurements  [OBLIGATORY]")
     parser.add_option("-v", "--number_of_curves", dest="ncurves",default = 1,
                       type = 'int',
                       help="Number of strcutural models [OBLIGATORY]")
@@ -41,6 +44,12 @@ if __name__=="__main__":
                       help="Simulated SAXS curves [OBLIGATORY]")
     parser.add_option("-e", "--experimental", dest="experimental",
                       help="Experimental SAXS curves [OBLIGATORY]")
+    parser.add_option("-S", "--cs_simulated", dest="cs_simulated",
+                      help="Simulated CS data [OBLIGATORY]")
+    parser.add_option("-E", "--cs_experimental", dest="cs_experimental",
+                      help="Experimental CS data [OBLIGATORY]")
+    parser.add_option("-R", "--cs_rms", dest="cs_rms",
+                      help="RMS of simulated CS data [OBLIGATORY]")
     parser.add_option("-o", "--output", dest="output",
                       help="Output file [OBLIGATORY]")
     parser.add_option("-c", "--cores", dest="nprocs",default = 1,
@@ -52,11 +61,9 @@ if __name__=="__main__":
     parser.add_option("-k", "--skip_vbw", dest="skip_vbw",default = False,
                       type = 'Boolean',
                       help="Skipping VBW step goes to model evidence directly")
-    parser.add_option("-C", "--chemical_shifts", dest="chemical_shifts",default = "None",
-                      help="Including chemical shifts in the calculation of likelihood functions")
 
     options, args = parser.parse_args()
     vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.structure_energies,\
-                  options.measures, options.simulated, options.ncurves, options.experimental,\
+                  options.measures, options.cs_measures, options.simulated, options.ncurves, options.experimental,\
                   options.output, options.nprocs, options.weight_cut, options.skip_vbw,
-                  options.chemical_shifts)
+                  options.cs_simulated, options.cs_rms, options.cs_experimental)
