@@ -31,9 +31,17 @@ typedef struct {
         void *saxsPrePtr;
         void *saxsMixPtr;
         double saxsScale;
+        void *csExpPtr;
+        void *csErrPtr;
+	    void *csRmsPtr;
+        void *csEnsPtr;
+        void *csPrePtr;
+        void *csMixPtr;
         int numberProcs;
         void *alphaPre;
-        int rosettaPrior;
+        bool rosettaPrior;
+        bool saxsOn;
+        bool chemicalShiftsOn;
         } block;
 
 block * block_alloc(size_t n);
@@ -53,5 +61,6 @@ double L_distance(void *xp, void *yp);
 void L_print (void *xp);
 void L_take_step(const gsl_rng * r, void *xp, double step_size);
 void run_vbw(const int &again, const int &k, const std::string &pre_weight_file, const std::string &structure_energies_file,
-        const int &N, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
-        const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw);
+        const int &N, const int &n, const std::string &presaxsfile, const int &Ncurves, const std::string &curvesfile,
+        const std::string &outfile, const int &nprocs, const double &w_cut, const int &skip_vbw,
+        const std::string &precsfile, const std::string &rmscsfile, const std::string &chemical_shifts_fite);

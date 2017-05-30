@@ -36,6 +36,14 @@ void block_copy(void *inp, void *outp) {
 	    out->saxsPrePtr = in->saxsPrePtr;
 	    out->saxsMixPtr = in->saxsMixPtr;
         out->saxsScale = in->saxsScale;
+
+        out->csExpPtr = in->csExpPtr;
+        out->csErrPtr = in->csErrPtr;
+	    //TODO: Seems not to be used
+        out->csEnsPtr = in->csEnsPtr;
+        out->csPrePtr = in->csPrePtr;
+        out->csMixPtr = in->csMixPtr;
+
 	    out->numberProcs = in->numberProcs;
 	    out->rosettaPrior = in->rosettaPrior;
 	    out->alphaPre = in->alphaPre;
@@ -85,117 +93,142 @@ double L_function(void *xp)
   //gettimeofday(&t1, NULL);
 
   block *x = (block *) xp;
-  //Data imports
+
   gsl_vector *saxs_ens = (gsl_vector *) (x->saxsEnsPtr);
   gsl_vector *saxs_exp = (gsl_vector *) (x->saxsExpPtr);
   gsl_vector *err_saxs = (gsl_vector *) (x->saxsErrPtr);
   gsl_matrix *saxs_pre = (gsl_matrix *) (x->saxsPrePtr);
+
+  //gsl_vector *cs_ens = (gsl_vector *) (x->csEnsPtr);
+  gsl_vector *cs_exp = (gsl_vector *) (x->csExpPtr);
+  gsl_vector *cs_err = (gsl_vector *) (x->csErrPtr);
+  gsl_vector *cs_rms = (gsl_vector *) (x->csRmsPtr);
+  gsl_matrix *cs_pre = (gsl_matrix *) (x->csPrePtr);
+
   double *mix_saxs = (double *) (x->saxsMixPtr);
+  double *mix_cs = (double *) (x->csMixPtr);
   double saxs_scale = x->saxsScale;
   int nprocs = x->numberProcs;
   gsl_vector *alpha_pre = (gsl_vector *) (x->alphaPre);
-  int rosettaPrior = x->rosettaPrior;
+  bool rosettaPrior = x->rosettaPrior;
+  //TODO: Add these variables to structure block
+  bool saxsOn = x->saxsOn;
+  bool chemicalShiftsOn = x->chemicalShiftsOn;
   size_t L = x->size;
   size_t N = saxs_exp->size;
+  size_t n = cs_exp->size;
   gsl_vector *weightsL = gsl_vector_alloc(N);
   int rep = 0;
   double alpha_zero = 0.0;
   double energy_zero = 0.0;
   double alpha_ens[N];
+  double cs_alpha_ens[n];
   double log_gamma_2 = gsl_sf_lngamma(0.5);
   double Lfunc=0.0;
   double fit_saxs=0.0, fit_saxs_mix = 0.0;
   double fit_cs=0.0, fit_cs_mix = 0.0;
-  //beta = 1.0/kBT in kcal
-  double beta = 1.717472947;
-  double shiftEnergyExp = exp(-x->shiftEnergy*beta);
 
   for (int i = 0; i < L; i++) {
 	  alpha_zero+=x->alphas[i];
-	  energy_zero+=shiftEnergyExp*gsl_vector_get(alpha_pre,i);
   }
 
   if (rosettaPrior) {
-    Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero);
-  } else {
-    Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
-  }
+        //beta = 1.0/kBT in kcal
+        double beta = 1.717472947;
+        double shiftEnergyExp = exp(-x->shiftEnergy*beta);
 
-  for (int i = 0; i < L; i++) {
-	if (rosettaPrior) {
-	    Lfunc+=gsl_sf_lngamma(shiftEnergyExp*gsl_vector_get(alpha_pre,i))
-	    - gsl_sf_lngamma( x->alphas[i] );
-	} else {
-	    Lfunc+=log_gamma_2 - gsl_sf_lngamma( x->alphas[i] );
-    }
-  }
+        for (int i = 0; i < L; i++) {
+	        Lfunc+=gsl_sf_lngamma(shiftEnergyExp*gsl_vector_get(alpha_pre,i))
+	        - gsl_sf_lngamma( x->alphas[i] );
 
-  for (int i = 0; i < L; i++) {
-    if (rosettaPrior) {
-        Lfunc+=(x->alphas[i]-shiftEnergyExp*gsl_vector_get(alpha_pre,i))
-        *(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero));
-    } else {
-        Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
-    }
-  }
-  //TODO: Lfunc from here
-  //cout<<"Shift energy "<<x->shiftEnergy<<", "<<Lfunc<<std::endl;
-  for( int i = 0; i< N; i++) {
-	alpha_ens[i] = 0.0;
-	for (int k = 0; k < L; k++) {
-		alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
-	}
-	gsl_vector_set(weightsL, i, alpha_ens[i]/alpha_zero);
-  }
-  //TODO: Scaling factor can be introduced here
-  double saxs_scale_current = SaxsScaleMean(weightsL,saxs_exp,err_saxs,N);
+	        Lfunc+=(x->alphas[i]-shiftEnergyExp*gsl_vector_get(alpha_pre,i))
+            *(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero));
 
-  for( int i = 0; i< N; i++) {
-	fit_saxs += ( pow(saxs_scale_current*alpha_ens[i]/alpha_zero - gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
+	        energy_zero+=shiftEnergyExp*gsl_vector_get(alpha_pre,i);
+	    }
+	    Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(energy_zero);
   }
- 
-  /*for( int i = 0; i< n; i++) {
-        alpha_ens[i] = 0.0;
-        for (int k = 0; k < L; k++) {
-                alpha_ens[i]+=gsl_matrix_get(cs_pre,i,k)*x->alphas[k];
+  else {
+        Lfunc+= gsl_sf_lngamma(alpha_zero)-gsl_sf_lngamma(L/2);
+        for (int i = 0; i < L; i++) {
+            Lfunc+=log_gamma_2 - gsl_sf_lngamma( x->alphas[i] );
+            Lfunc+=((x->alphas[i]-0.5)*(gsl_sf_psi(x->alphas[i])-gsl_sf_psi(alpha_zero)));
         }
-        fit_saxs += ( pow(alpha_ens[i]/alpha_zero - gsl_vector_get(cs_exp,i), 2) / ( pow(gsl_vector_get(cs_err,i),2) + pow(gsl_vector_get(cs_rms,i),2) ) );
-  }*/
-
-
-
-  double smix, deltamix;
-  int i_ind,j_ind;
-   
-  //gettimeofday(&t1, NULL);
-  #pragma omp parallel for \
-  default(none) shared(L,x,mix_saxs,alpha_zero)\
-  private (i_ind, j_ind, smix, deltamix) \
-  num_threads(nprocs) \
-  schedule(dynamic,16) \
-  reduction(+:fit_saxs_mix)
-  //reduction(+:cs_saxs_mix)
-
-  for(i_ind = 0; i_ind < L; i_ind++) {
-  	for ( j_ind = i_ind; j_ind < L; j_ind++) {
-		smix = mix_saxs[L*i_ind+j_ind];
-		//cs_mix = mix_cs[L*i_ind+j_ind];
-        deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] :
-        x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
-        fit_saxs_mix += deltamix * smix;
-		//fit_cs_mix += deltamix * cs_smix;
-       }
   }
-  //gettimeofday(&t2, NULL); 
-  fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
-  //fit_cs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
-  Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
-  //Lfunc+=0.5*(fit_saxs+fit_saxs_mix+fit_cs_mix);
 
-  // compute and print the elapsed time in millisec
-  //elapsedTime = (t2.tv_sec - t1.tv_sec)*1000.0;      // sec to ms
-  //elapsedTime += (t2.tv_usec - t1.tv_usec)/1000.0;
-  //cout << "Time: "<< fit_saxs_mix<< " : "<<elapsedTime << " ms."<<std::endl;
+  //Likelihood functions
+  if (saxsOn) {
+
+    for( int i = 0; i< N; i++) {
+	    alpha_ens[i] = 0.0;
+	    for (int k = 0; k < L; k++) {
+		    alpha_ens[i]+=gsl_matrix_get(saxs_pre,i,k)*x->alphas[k];
+	    }
+	    gsl_vector_set(weightsL, i, alpha_ens[i]/alpha_zero);
+     }
+    double saxs_scale_current = SaxsScaleMean(weightsL,saxs_exp,err_saxs,N);
+
+    for( int i = 0; i< N; i++) {
+	    fit_saxs += ( pow(saxs_scale_current*alpha_ens[i]/alpha_zero -
+	    gsl_vector_get(saxs_exp,i), 2) / pow(gsl_vector_get(err_saxs,i),2) );
+    }
+
+    double smix, deltamix;
+    int i_ind,j_ind;
+   
+    //gettimeofday(&t1, NULL);
+    #pragma omp parallel for \
+    default(none) shared(L,x,mix_saxs, alpha_zero)\
+    private (i_ind, j_ind, smix, deltamix) \
+    num_threads(nprocs) \
+    schedule(dynamic,16) \
+    reduction(+:fit_saxs_mix)
+
+    for(i_ind = 0; i_ind < L; i_ind++) {
+  	    for ( j_ind = i_ind; j_ind < L; j_ind++) {
+		    smix = mix_saxs[L*i_ind+j_ind];
+		    deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] :
+            x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+            fit_saxs_mix += deltamix * smix;
+		}
+    }
+    fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
+    Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
+  }
+  //This may be semi-optimal but is good for modularization
+  if (chemicalShiftsOn) {
+
+    double cs_mix, deltamix;
+    int i_ind,j_ind;
+
+    for( int i = 0; i< n; i++) {
+        cs_alpha_ens[i] = 0.0;
+        for (int k = 0; k < L; k++) {
+            cs_alpha_ens[i]+=gsl_matrix_get(cs_pre,i,k)*x->alphas[k];
+        }
+        fit_cs += ( pow(cs_alpha_ens[i]/alpha_zero - gsl_vector_get(cs_exp,i), 2)
+        / ( pow(gsl_vector_get(cs_err,i),2) + pow(gsl_vector_get(cs_rms,i),2) ) );
+    }
+
+    #pragma omp parallel for \
+    default(none) shared(L,x,mix_cs, alpha_zero)\
+    private (i_ind, j_ind, cs_mix, deltamix) \
+    num_threads(nprocs) \
+    schedule(dynamic,16) \
+    reduction(+:fit_cs_mix)
+
+    for(i_ind = 0; i_ind < L; i_ind++) {
+  	    for ( j_ind = i_ind; j_ind < L; j_ind++) {
+		    cs_mix = mix_cs[L*i_ind+j_ind];
+            deltamix = (i_ind!=j_ind) ? -2*x->alphas[i_ind]*x->alphas[j_ind] :
+            x->alphas[i_ind]*(alpha_zero - x->alphas[i_ind]);
+  		    fit_cs_mix += deltamix * cs_mix;
+       }
+    }
+    fit_cs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
+    Lfunc+=0.5*(fit_cs+fit_cs_mix);
+
+  }
 
   gsl_vector_free(weightsL);
   return Lfunc;
@@ -209,7 +242,9 @@ double L_distance(void *xp, void *yp)
   for (int i=0; i<x->size; i++) {
 	vector_distance+=fabs(x->alphas[i]-y->alphas[i]);
   }
-  vector_distance+=fabs(x->shiftEnergy-y->shiftEnergy);
+  if (x->rosettaPrior) {
+    vector_distance+=fabs(x->shiftEnergy-y->shiftEnergy);
+  }
   return sqrt(vector_distance);
 }
 
@@ -338,17 +373,35 @@ double calculate_chi2( gsl_vector* saxs_ens_current, double saxs_scale_current, 
 	return chi2;
 }
 
+double calculate_chi2_crysol( gsl_vector* saxs_ens_current, double saxs_scale_current, gsl_vector* saxs_exp, gsl_vector* err_saxs,  int N) {
+    double chi2 = 0.0;
+    double saxs_scale_crysol, mixed_term, square_calc;
+    double err;
+    for (int i=0; i < N; i++) {
+        err = pow(gsl_vector_get(err_saxs, i),2);
+        mixed_term += gsl_vector_get(saxs_exp, i)*gsl_vector_get(saxs_ens_current, i)/err;
+        square_calc += gsl_vector_get(saxs_ens_current, i)*gsl_vector_get(saxs_ens_current, i)/err;
+    }
+    saxs_scale_crysol = mixed_term/square_calc;
+
+	for (int i=0; i < N; i++) {
+	    chi2+=pow((gsl_vector_get(saxs_exp, i) - saxs_scale_crysol*gsl_vector_get(saxs_ens_current, i)),2)
+	    / pow(gsl_vector_get(err_saxs, i),2);
+	}
+	return chi2/N;
+}
 /*Overall algorithm
 1. Read experimental data and parameter priors
 2. Run simulated anealing to minimize function 
 3. Iteratively remove structures with weights lower than wcut
 */
 void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
-        const std::string &structure_energy_file, const int &N,
+        const std::string &structure_energy_file, const int &N, const int &n,
         const std::string &presaxsfile, const int &Ncurves,
         const std::string &curvesfile, const std::string &outfile,
-        const int &nprocs, const double &w_cut,
-        const int &skip_vbw)
+        const int &nprocs, const double &w_cut, const int &skip_vbw,
+        const std::string &precsfile, const std::string &rmscsfile,
+        const std::string &chemical_shifts_file)
 {
 	//////////////////// Init section /////////////////////////////////////
 	double saxs_scale_current;
@@ -377,9 +430,13 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	float acceptance_rate = 1.0;
     bool rosettaPrior = false;
     bool chemicalShiftsOn = false;
+    bool saxsOn = false;
  	saxs_mix = (double * ) malloc( k * k * sizeof( double ));
+ 	cs_mix = (double * ) malloc( k * k * sizeof( double ));
 	gsl_matrix *saxs_pre = gsl_matrix_alloc(N,k);
+	gsl_matrix *cs_pre = gsl_matrix_alloc(n,k);
 	gsl_matrix *saxs_file_matrix = gsl_matrix_alloc(N,3);
+	gsl_matrix *cs_file_matrix = gsl_matrix_alloc(n,3);
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
@@ -392,7 +449,11 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		*saxs_ens_current = gsl_vector_alloc(N),
 		*memory = gsl_vector_alloc(k+4),
 		*bayesian_weight1 = gsl_vector_alloc(k),
-        *bayesian_weight1_current = gsl_vector_alloc(k);
+        *bayesian_weight1_current = gsl_vector_alloc(k),
+        *cs_exp = gsl_vector_alloc(n),
+        *cs_err = gsl_vector_alloc(n),
+		*cs_rms = gsl_vector_alloc(n),
+		*cs_ens_current = gsl_vector_alloc(n);
 	
 	gsl_vector_set_zero(bayesian_weight1);
 	gsl_matrix *weight_samples = gsl_matrix_alloc(samples,k);;
@@ -413,14 +474,25 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	    fclose(inFile);
 	}
 
-/*    //Loading chemical shift files
+    //Loading chemical shift files
     if (chemical_shifts_file.c_str() != "None") {
         chemicalShiftsOn = true;
-	    inFile = fopen(chemical_shifts_file.c_str(),"r");
-	    gsl_vector_fscanf(inFile,rosetta_engeries);
+        inFile = fopen(precsfile.c_str(),"r");
+        gsl_matrix_fscanf(inFile,cs_pre); fclose(inFile);
+
+        inFile = fopen(rmscsfile.c_str(),"r");
+        gsl_vector_fscanf(inFile,cs_rms); fclose(inFile);
+
+	    FILE *inFile = fopen(chemical_shifts_file.c_str(),"r");
+            gsl_matrix_fscanf(inFile,cs_file_matrix);
+
+	    for (int i = 0;  i< N; i++) {
+            gsl_vector_set(cs_exp,i,gsl_matrix_get(cs_file_matrix,i,1));
+       	    gsl_vector_set(cs_err,i,gsl_matrix_get(cs_file_matrix,i,2));
+        }
 	    fclose(inFile);
 	}
-*/
+
 	//Read scattering file
     FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
@@ -466,10 +538,10 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	simAnBlock->saxsErrPtr = err_saxs;
 	simAnBlock->saxsPrePtr = saxs_pre;
 	simAnBlock->alphaPre = alpha_pre;
-	//simAnBlock->csExpPtr = cs_exp;
-    //simAnBlock->csErrPtr = cs_err;
-	//simAnBlock->csRMSPtr = cs_rms;
-    //simAnBlock->csPrePtr = cs_pre;
+	simAnBlock->csExpPtr = cs_exp;
+    simAnBlock->csErrPtr = cs_err;
+	simAnBlock->csRmsPtr = cs_rms;
+    simAnBlock->csPrePtr = cs_pre;
 	simAnBlock->numberProcs = nprocs;
 	simAnBlock->rosettaPrior = rosettaPrior;
 
@@ -479,12 +551,13 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	}
 
 	gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_pre, 0.0, saxs_ens_current);	
-	// gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
+	gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_pre, 0.0, cs_ens_current);
+
 	//TODO: Scaling is not required here?
 	saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
 	simAnBlock->saxsScale = saxs_scale_current;
 	simAnBlock->saxsEnsPtr = saxs_ens_current;
-	//simAnBlock->csEnsPtr = cs_ens_current;
+	simAnBlock->csEnsPtr = cs_ens_current;
 	
 	if(again == 1){ inFile = fopen("restart.dat","r"); gsl_vector_fscanf(inFile,tostart); fclose(inFile); }	
 	//timeval t1, t2;
@@ -492,23 +565,23 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
   	//gettimeofday(&t1, NULL);
 
 	double smix;
-	//double cs_mix;
-    //#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)
-	#pragma omp parallel for reduction(+:smix) num_threads(nprocs)    
+	double csmix;
+    #pragma omp parallel for reduction(+:smix) reduction(+:csmix) num_threads(nprocs)
+	//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)
 	for( int i = 0; i< k; i++) {
         for (int j = 0; j < k; j++) {
 		    smix = 0.0;
-		    //cs_mix = 0.0;
+		    csmix = 0.0;
             for (int m = 0; m < N; m++) {
 			    smix+=gsl_matrix_get(saxs_pre,m,i)*gsl_matrix_get(saxs_pre,m,j)
 			    /pow(gsl_vector_get(err_saxs,m),2);
 		    }
-		    /*for (int m = 0; m < n; m++) {
-                cs_mix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)
+		    for (int m = 0; m < n; m++) {
+                csmix+=gsl_matrix_get(cs_pre,m,i)*gsl_matrix_get(cs_pre,m,j)
                 /(pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
-            }*/
+            }
             saxs_mix[i*k+j] = smix;
-		    //cs_mix[i*k+j] = cs_mix;
+		    cs_mix[i*k+j] = csmix;
         }
 	}
 	/*gettimeofday(&t2, NULL);
@@ -518,7 +591,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
   	cout << "Time: "<< elapsedTime << " ms."<<std::endl;*/
 
 	simAnBlock->saxsMixPtr = saxs_mix;
-	//simAnBlock->csMixPtr = cs_mix;
+	simAnBlock->csMixPtr = cs_mix;
 	///////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////
@@ -563,7 +636,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	    }
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 		saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
 		block_destroy(simAnBlock);
 		free(saxs_mix); //TODO: CHeck if these doesn't corrupt memory
 		/////////////////////////////////////////////////////////////////////
@@ -588,16 +661,21 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		
 		block *simAnBlock = block_alloc(L);
 		gsl_matrix *saxs_pre_round = gsl_matrix_alloc(N,L);
+		gsl_matrix *cs_pre_round = gsl_matrix_alloc(n,L);
     	gsl_vector *alpha_pre_round = gsl_vector_alloc(L);
 		gsl_vector *rosetta_engeries_round = gsl_vector_alloc(L);
 		double  *saxs_mix_round =  (double * ) malloc( L * L * sizeof( double ));
-
+        double  *cs_mix_round =  (double * ) malloc( L * L * sizeof( double ));
 		l = 0;
 		for (int i = 0; i < k; i++) {
 			if (removed_indexes[i]==false) {
 			    //TODO: Here we need to call function that recalculates alphas_pre
 				if (rosettaPrior) {
 				    gsl_vector_set(rosetta_engeries_round,l,gsl_vector_get(rosetta_engeries,i));
+				}
+
+                for (int j = 0; j < n; j++) {
+					gsl_matrix_set(cs_pre_round,j,l,gsl_matrix_get(cs_pre,j,i));
 				}
 
 				for (int j = 0; j < N; j++) {
@@ -618,8 +696,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	    shiftEnergyInternal = -kBT*log(0.5*L/energy_sum);
         simAnBlock->shiftEnergy = shiftEnergyInternal;
 
-		//#pragma omp parallel for reduction(+:smix) reduction(+:cs_mix) num_threads(nprocs)  
-		#pragma omp parallel for reduction(+:smix) num_threads(nprocs) 
+		#pragma omp parallel for reduction(+:smix) reduction(+:csmix) num_threads(nprocs)
+		//#pragma omp parallel for reduction(+:smix) num_threads(nprocs)
         for( int i = 0; i < L; i++) {
             for (int j = 0; j < L; j++) {
 		         smix = 0.0;
@@ -627,7 +705,13 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		            smix+=gsl_matrix_get(saxs_pre_round,m,i)
 		            *gsl_matrix_get(saxs_pre_round,m,j)/pow(gsl_vector_get(err_saxs,m),2);
                  }
+                 for (int m = 0; m < n; m++) {
+                    csmix+=gsl_matrix_get(cs_pre_round,m,i)*
+                    gsl_matrix_get(cs_pre_round,m,j)/
+                    (pow(gsl_vector_get(cs_err,m),2)+pow(gsl_vector_get(cs_rms,m),2));
+                 }
 	        saxs_mix_round[i*L+j]=smix;
+	        cs_mix_round[i*L+j]=csmix;
            	}
 		}
 
@@ -649,6 +733,14 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         simAnBlock->saxsMixPtr = saxs_mix_round;
 		simAnBlock->saxsEnsPtr = saxs_ens_current;
 		simAnBlock->saxsScale = saxs_scale_current;
+
+        simAnBlock->csExpPtr = cs_exp;
+        simAnBlock->csErrPtr = cs_err;
+		simAnBlock->csRmsPtr = cs_rms;
+        simAnBlock->csPrePtr = cs_pre_round;
+        simAnBlock->csMixPtr = cs_mix_round;
+        simAnBlock->csEnsPtr = cs_ens_current;
+
         simAnBlock->alphaPre = alpha_pre_round;
         simAnBlock->rosettaPrior = rosettaPrior;
 		simAnBlock->numberProcs = nprocs;	
@@ -726,7 +818,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 
 		gsl_blas_dgemv(CblasNoTrans, 1.0, saxs_pre, w_ens_current, 0.0, saxs_ens_current);
 	    saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-		//gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);	
+		gsl_blas_dgemv(CblasNoTrans, 1.0, cs_pre, w_ens_current, 0.0, cs_ens_current);
 		//Structural library size after discarding structures with weight lower than cuttof
 		shiftEnergyInternal = simAnBlock->shiftEnergy;
 		L = newL;
@@ -780,6 +872,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 
 		free(saxs_mix_round);
 		gsl_matrix_free(saxs_pre_round);
+		free(cs_mix_round);
+        gsl_matrix_free(cs_pre_round);
 		gsl_vector_free(alpha_pre_round);
         gsl_vector_free(rosetta_engeries_round);
 
@@ -825,6 +919,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         }
     }
 
+    saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
     double chi2 = calculate_chi2(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
     output<<"\nChi2 "<<chi2<<std::endl;
 

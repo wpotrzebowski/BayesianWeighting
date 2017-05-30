@@ -58,4 +58,5 @@ if __name__=="__main__":
     options, args = parser.parse_args()
     vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.structure_energies,\
                   options.measures, options.simulated, options.ncurves, options.experimental,\
-                  options.output, options.nprocs, options.weight_cut, options.skip_vbw)
+                  options.output, options.nprocs, options.weight_cut, options.skip_vbw,
+                  options.chemical_shifts)
