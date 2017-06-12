@@ -867,7 +867,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		block_destroy(simAnBlock);	
 		overall_iteration++;
 
-	    double chi2 = calculate_chi2(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
+	    double chi2 = calculate_chi2_crysol(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
 
 		sampling_step = overall_iteration-1;
 		for (int jind=0; jind<k; jind++) {
@@ -961,7 +961,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     }
 
     saxs_scale_current = SaxsScaleMean(saxs_ens_current,saxs_exp,err_saxs,N);
-    double chi2 = calculate_chi2(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
+    double chi2 = calculate_chi2_crysol(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
     output<<"\nChi2 "<<chi2<<std::endl;
 
     double model_evd;
