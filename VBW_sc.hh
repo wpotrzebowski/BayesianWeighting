@@ -34,7 +34,6 @@ typedef struct {
         void *csExpPtr;
         void *csErrPtr;
 	    void *csRmsPtr;
-        void *csEnsPtr;
         void *csPrePtr;
         void *csMixPtr;
         int numberProcs;
