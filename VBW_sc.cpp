@@ -193,6 +193,14 @@ double L_function(void *xp)
     }
     fit_saxs_mix /= (pow(alpha_zero,2)*(alpha_zero+1));
     Lfunc+=0.5*(fit_saxs+fit_saxs_mix);
+   
+    gsl_vector_free(weightsL);
+    //gsl_vector_free(saxs_ens);
+    //gsl_vector_free(saxs_exp);
+    //gsl_vector_free(err_saxs);
+    //gsl_matrix_free(saxs_pre);
+    //free(mix_saxs);
+
   }
   //This may be semi-optimal but is good for modularization
   if (chemicalShiftsOn) {
@@ -241,14 +249,7 @@ double L_function(void *xp)
     //free(mix_cs);
   }
 
-  //gsl_vector_free(weightsL);
   //gsl_vector_free(alpha_pre);
-
-  //gsl_vector_free(saxs_ens);
-  //gsl_vector_free(saxs_exp);
-  //gsl_vector_free(err_saxs);
-  //gsl_matrix_free(saxs_pre);
-  //free(mix_saxs);
 
   return Lfunc;
 }
@@ -303,7 +304,7 @@ double ModelEvidenceEnergy(gsl_vector *saxs_ens, gsl_vector *saxs_exp, gsl_vecto
                 double saxs_scale, int N)
 {
 
-	double exp_scale = 1/10e6;
+	double exp_scale = 1/10e8;
 	double norm_term = 1.0; 
 
 	double fit_saxs = 0.0;
@@ -433,7 +434,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     double MU_T;
     double T_MIN;
 
-    //TODO: Samples, set to maximum 500, which is also the maximum number of iterations.
+    //TODO: Samples, set to maximum 5000, which is also the maximum number of iterations.
 	int samples = 500;
 
     ofstream output(outfile,  std::ofstream::out | std::ofstream::trunc);
@@ -493,6 +494,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	inFile = fopen(pre_weight_file.c_str(),"r"); gsl_vector_fscanf(inFile,w_pre); fclose(inFile);
 	//Read prior alphas
 	if (rosettaPrior) {
+            std::cout<<"Loading structural priors"<<std::endl;
 	    inFile = fopen(structure_energy_file.c_str(),"r");
 	    gsl_vector_fscanf(inFile,rosetta_engeries);
 	    fclose(inFile);
@@ -500,6 +502,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 
     //Loading chemical shift files
     if (chemicalShiftsOn) {
+	std::cout<<"Loading chemical shifts"<<std::endl;
         inFile = fopen(precsfile.c_str(),"r");
         gsl_matrix_fscanf(inFile,cs_pre); fclose(inFile);
 
@@ -800,6 +803,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
              gsl_siman_solve(r, simAnBlock, L_function, L_take_step, L_distance, NULL,
                 block_copy, block_copy_construct, block_destroy,
                 0, params, &acceptance_rate);
+			//cout<<"Acceptance Rate "<<acceptance_rate<<std::endl;
 			if(fabs(acceptance_rate -0.5) < dmin) { 
 				dmin = fabs(acceptance_rate -0.5);
 				STEP_SIZE = s;		
@@ -807,9 +811,9 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		}
 		///////////////////////////////////////////////////////////////////////////////////////////
 		cout<<"STEP_SIZE set to: "<<STEP_SIZE<<std::endl;
-		N_TRIES = 1;
-        ITERS_FIXED_T = 1;
-        STEP_SIZE = 1;
+		N_TRIES = 1.0;
+        ITERS_FIXED_T = 1.0;
+        STEP_SIZE = 1.0;
         K = 1.0;
         T_INITIAL = 1.0;
 		MU_T = 1.00005;
@@ -889,13 +893,14 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         // gsl_vector_set(bayesian_weight1,j,gsl_matrix_get(weight_samples,s,j));
         //}
         jsd1 = jensen_shannon_div(bayesian_weight1_current,w_ens_current,k);
-        jsd1_sum += sqrt(jsd1);
+        //jsd1_sum += sqrt(jsd1);
+	jsd1_sum += jsd1;
         //}
 
 		if (energy_current < energy_min) {
 			energy_min = energy_current;
             last_updated = overall_iteration;
-
+		} //Adding this one WOjtek
 			for( int l = 0; l < k; l++) {
                 gsl_vector_set(memory, l , gsl_vector_get(w_ens_current,l));
         	}
@@ -908,7 +913,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
         	for( int j = 0; j < k + 3; j++) output << gsl_vector_get(memory,j) << " ";
         	output <<gsl_vector_get(memory,k+3)<<endl;
 			//output.close();
-		}
+		//}
 
 
 		free(saxs_mix_round);
@@ -931,7 +936,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	}	
 	///////////////////////////////////////////////////////////////////////	
 
-    output<<"Jesen-Shannon Div "<<jsd1_sum/double(sampling_step)<<std::endl;
+    output<<"Jesen-Shannon Div "<<sqrt(jsd1_sum/double(sampling_step))<<std::endl;
     //}//Finish VBW section
     }
     //Model Evidence calculation

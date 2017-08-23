@@ -4,6 +4,12 @@
 ./VBW_mc.o
 ./vbw.py
 ./vbw_wrap.cxx
+./VBW_sc.o
+./_vbwSC.so
+./vbwSC.py
+./vbwSC.pyc
+./vbw_sc_wrap.cxx
+./vbw_sc_wrap.o
 ./.git/hooks/applypatch-msg.sample
 ./.git/hooks/commit-msg.sample
 ./.git/hooks/pre-commit.sample
