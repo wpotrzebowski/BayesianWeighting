@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4bee1447-72d9-460a-8517-9d7ff9e699d5" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/VBW_sc.cpp" afterPath="$PROJECT_DIR$/VBW_sc.cpp" />
     </list>
     <ignored path="BayesianWeighting.iws" />
@@ -59,8 +58,8 @@
       <file leaf-file-name="VBW_sc.cpp" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/VBW_sc.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.45">
-              <caret line="973" column="11" selection-start-line="973" selection-start-column="11" selection-end-line="973" selection-end-column="82" />
+            <state vertical-scroll-proportion="0.275">
+              <caret line="800" column="10" selection-start-line="800" selection-start-column="10" selection-end-line="800" selection-end-column="10" />
               <folding />
             </state>
           </provider>
@@ -636,8 +635,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/VBW_sc.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.45">
-          <caret line="973" column="11" selection-start-line="973" selection-start-column="11" selection-end-line="973" selection-end-column="82" />
+        <state vertical-scroll-proportion="0.275">
+          <caret line="800" column="10" selection-start-line="800" selection-start-column="10" selection-end-line="800" selection-end-column="10" />
           <folding />
         </state>
       </provider>

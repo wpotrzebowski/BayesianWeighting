@@ -789,7 +789,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 		simAnBlock->numberProcs = nprocs;
 		
 		////////////////////////Short equilibration period to find step size/////////////////////////
-		N_TRIES = 1;
+		/*N_TRIES = 1;
         ITERS_FIXED_T = 1000;
         K = 1.0;
         T_INITIAL = 1.0;
@@ -811,8 +811,8 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 				STEP_SIZE = s;		
 			}	
 		}
+		cout<<"STEP_SIZE set to: "<<STEP_SIZE<<std::endl;*/
 		///////////////////////////////////////////////////////////////////////////////////////////
-		cout<<"STEP_SIZE set to: "<<STEP_SIZE<<std::endl;
 		N_TRIES = 1.0;
         ITERS_FIXED_T = 1.0;
         STEP_SIZE = 1.0;
