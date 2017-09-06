@@ -462,6 +462,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 
 	gsl_vector *saxs_exp = gsl_vector_alloc(N),
 		*err_saxs = gsl_vector_alloc(N),
+		*saxs_qvector = gsl_vector_alloc(N),
 		*alpha_pre = gsl_vector_alloc(k),
 		*rosetta_engeries = gsl_vector_alloc(k),
 		*w_pre = gsl_vector_alloc(k),
@@ -523,6 +524,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     FILE *inSAXSdat = fopen(curvesfile.c_str(),"r");
     gsl_matrix_fscanf(inSAXSdat,saxs_file_matrix);
     for (int i = 0;  i< N; i++) {
+        gsl_vector_set(saxs_qvector,i,gsl_matrix_get(saxs_file_matrix,i,0));
         gsl_vector_set(saxs_exp,i,gsl_matrix_get(saxs_file_matrix,i,1));
        	gsl_vector_set(err_saxs,i,gsl_matrix_get(saxs_file_matrix,i,2));
     }
@@ -969,10 +971,19 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     double chi2 = calculate_chi2_crysol(saxs_ens_current, saxs_scale_current, saxs_exp, err_saxs, N);
     output<<"\nChi2 "<<chi2<<std::endl;
 
+    //TODO: Check if saxs_ens_current keeps latest value and if needs to be scaled
+    ofstream fitoutput("fit"+output, std::ofstream::out | std::ofstream::trunc);
+    for (int i = 0; i < N; i++) {
+	    fitoutput<<gsl_vector_get(saxs_qvector,i)<<"  "<<
+	        gsl_vector_get(saxs_exp,i)<<"  "<<
+	    	saxs_scale_current*gsl_vector_get(saxs_ens_current,i)<<"  "<<
+	    	gsl_vector_get(err_saxs,i)<<std::endl;
+    }
+
     double model_evd;
     model_evd = mc_integrate(saxs_pre_selected, saxs_exp, err_saxs, L, N);
     output<<"\nModel Evidence: "<<model_evd<<std::endl;
     output.close();
-
+    fitoutput.close();
 	gsl_rng_free (r);
 }
