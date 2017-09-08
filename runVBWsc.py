@@ -11,6 +11,29 @@ __email__ = "Wojciech.Potrzebowski@biochemistry.lu.se"
 import optparse
 import vbwSC
 
+def produce_output(output, file_list):
+    #1. Match file list with weight list
+    logfile = open(output+".log","w")
+    output_lines = open(output).readlines()
+    weights = output_lines[-6].split(" ")[:-4]
+    output_JSD = output_lines[-5]
+    output_chi2 = output_lines[-3]
+    output_ModelEvidence = output_lines[-1]
+
+    logfile.write("Log file from variational Bayesian algorithm\n")
+    logfile.write(output_chi2)
+    logfile.write(output_JSD)
+    logfile.write(output_ModelEvidence)
+
+    logfile.write("Model selected:\n")
+    structure_file_list = open(file_list).strip("\n").split(" ")
+    if len(weights) != len(structure_file_list):
+        raise Exception("Weights and file list have different size!")
+    for index, weight in enumerate(weights):
+        if float(weight)>0.0:
+            logfile.write(structure_file_list[index]+"\n")
+    logfile.close()
+
 if __name__=="__main__":
     doc = """
         Python interface to Variational Bayesian algorithm
@@ -61,9 +84,12 @@ if __name__=="__main__":
     parser.add_option("-k", "--skip_vbw", dest="skip_vbw",default = 0,
                       type = 'int',
                       help="Skipping VBW step goes to model evidence directly")
-
+    parser.add_option("-f", "--file_list", dest="file_list",
+                      help="List of structure files")
     options, args = parser.parse_args()
     vbwSC.run_vbw(options.restart, options.nstruct, options.priors, options.structure_energies,\
                   options.measures, options.cs_measures, options.simulated, options.ncurves, options.experimental,\
                   options.output, options.nprocs, options.weight_cut, options.skip_vbw,\
                   options.cs_simulated, options.cs_rms, options.cs_experimental)
+
+    porduce_output(options.output, options.file_list)
