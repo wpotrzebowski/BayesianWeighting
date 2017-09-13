@@ -20,20 +20,16 @@ data {
   vector[n_structures] alphas;
 }
 
-transformed data {
-  vector[n_measures] log_target_curve;
-  log_target_curve = log(target_curve);
-}
-
 parameters {
   simplex[n_structures] weights;
+  real<lower=0.0001> scale;
 }
 
 model {
-  vector[n_measures] log_pred_curve;
+  vector[n_measures] pred_curve;
   weights ~ dirichlet(alphas);
-  log_pred_curve = log(sim_curves * weights);
-  log_target_curve ~ normal(log_pred_curve, target_errors);
+  pred_curve = sim_curves * weights * scale;
+  target_curve ~ normal(pred_curve, target_errors);
 }
 """
 
@@ -64,7 +60,7 @@ stan_dat = {"sim_curves": simulated,
             "n_structures" : np.shape(simulated)[1],
             "alphas":priors}
 sm = pystan.StanModel(model_code=stan_code)
-fit = sm.sampling(data=stan_dat, iter=10000, chains=2)
+fit = sm.sampling(data=stan_dat, iter=1000, chains=2)
 
 print(fit)
 
@@ -79,7 +75,7 @@ jsd_sum = 0.0
 bayesian_weights = np.zeros(np.shape(simulated)[1])
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-1]
+        current_weights = parameters[:-2]
         bayesian_weights+=current_weights
         nsamples+=1
 bayesian_weights=bayesian_weights/nsamples
@@ -87,6 +83,6 @@ print(bayesian_weights)
 
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-1]
+        current_weights = parameters[:-2]
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
