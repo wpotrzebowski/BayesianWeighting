@@ -92,4 +92,4 @@ if __name__=="__main__":
                   options.output, options.nprocs, options.weight_cut, options.skip_vbw,\
                   options.cs_simulated, options.cs_rms, options.cs_experimental)
 
-    porduce_output(options.output, options.file_list)
+    produce_output(options.output, options.file_list)
