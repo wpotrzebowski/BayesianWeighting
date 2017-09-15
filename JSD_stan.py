@@ -28,7 +28,7 @@ parameters {
 
 model {
   vector[n_measures] pred_curve;
-  vector[n_measures] alphas;
+  vector[n_structures] alphas;
   alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
   pred_curve = sim_curves * weights * scale;
