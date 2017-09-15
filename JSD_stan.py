@@ -17,16 +17,19 @@ data {
   vector[n_measures] target_curve;
   vector[n_measures] target_errors;
   matrix[n_measures, n_structures] sim_curves;
-  vector[n_structures] alphas;
+  vector[n_structures] energy_priors;
 }
 
 parameters {
   simplex[n_structures] weights;
   real<lower=0.0001> scale;
+  real boltzman_shift;
 }
 
 model {
   vector[n_measures] pred_curve;
+  vector[n_measures] alphas;
+  alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
   pred_curve = sim_curves * weights * scale;
   target_curve ~ normal(pred_curve, target_errors);
