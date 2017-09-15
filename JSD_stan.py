@@ -78,7 +78,7 @@ jsd_sum = 0.0
 bayesian_weights = np.zeros(np.shape(simulated)[1])
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-2]
+        current_weights = parameters[:-3]
         bayesian_weights+=current_weights
         nsamples+=1
 bayesian_weights=bayesian_weights/nsamples
@@ -86,6 +86,6 @@ print(bayesian_weights)
 
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-2]
+        current_weights = parameters[:-3]
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
