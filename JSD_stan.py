@@ -61,7 +61,7 @@ stan_dat = {"sim_curves": simulated,
             "target_errors": experimental[:,2],
             "n_measures" : np.shape(experimental)[0],
             "n_structures" : np.shape(simulated)[1],
-            "alphas":priors}
+            "energy_priors":priors}
 sm = pystan.StanModel(model_code=stan_code)
 fit = sm.sampling(data=stan_dat, iter=1000, chains=2)
 
