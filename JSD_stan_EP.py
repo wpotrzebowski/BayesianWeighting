@@ -17,18 +17,19 @@ data {
   vector[n_measures] target_curve;
   vector[n_measures] target_errors;
   matrix[n_measures, n_structures] sim_curves;
-  vector[n_structures] priors;
+  vector[n_structures] energy_priors;
 }
 
 parameters {
   simplex[n_structures] weights;
   real<lower=0.0001> scale;
+  real boltzman_shift;
 }
 
 model {
   vector[n_measures] pred_curve;
   vector[n_structures] alphas;
-  alphas = priors;
+  alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
   pred_curve = sim_curves * weights * scale;
   target_curve ~ normal(pred_curve, target_errors);
@@ -60,7 +61,7 @@ stan_dat = {"sim_curves": simulated,
             "target_errors": experimental[:,2],
             "n_measures" : np.shape(experimental)[0],
             "n_structures" : np.shape(simulated)[1],
-            "priors":priors}
+            "energy_priors":priors}
 sm = pystan.StanModel(model_code=stan_code)
 fit = sm.sampling(data=stan_dat, iter=1000, chains=2)
 
@@ -77,7 +78,7 @@ jsd_sum = 0.0
 bayesian_weights = np.zeros(np.shape(simulated)[1])
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-2]
+        current_weights = parameters[:-3]
         bayesian_weights+=current_weights
         nsamples+=1
 bayesian_weights=bayesian_weights/nsamples
@@ -85,6 +86,6 @@ print(bayesian_weights)
 
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-2]
+        current_weights = parameters[:-3]
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
