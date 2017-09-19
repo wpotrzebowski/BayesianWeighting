@@ -25,7 +25,7 @@ def produce_output(output, file_list):
     logfile.write(output_JSD)
     logfile.write(output_ModelEvidence)
 
-    logfile.write("Model selected:\n")
+    logfile.write("Models selected:\n")
     structure_file_list = open(file_list).readlines()[0].strip("\n").split(" ")
     if len(weights) != len(structure_file_list):
         raise Exception("Weights and file list have different size!")
