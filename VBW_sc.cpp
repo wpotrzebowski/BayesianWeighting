@@ -974,10 +974,15 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     //TODO: Check if saxs_ens_current keeps latest value and if needs to be scaled
     ofstream fitoutput(outfile+".fit", std::ofstream::out | std::ofstream::trunc);
     for (int i = 0; i < N; i++) {
-	    fitoutput<<std::setprecision(8)<<std::setw(12)<<gsl_vector_get(saxs_qvector,i)
-	        <<std::setw(12)<<gsl_vector_get(saxs_exp,i)
-	    	<<std::setw(12)<<saxs_scale_current*gsl_vector_get(saxs_ens_current,i)
-	    	<<std::setw(12)<<gsl_vector_get(err_saxs,i)<<std::endl;
+        fitoutput.precision(8);
+	    fitoutput.width(14);
+	    fitoutput<<gsl_vector_get(saxs_qvector,i);
+	    fitoutput.width(14);
+	    fitoutput<<gsl_vector_get(saxs_exp,i);
+	    fitoutput.width(14);
+	    fitoutput<<saxs_scale_current*gsl_vector_get(saxs_ens_current,i);
+	    fitoutput.width(14);
+	    fitoutput<<gsl_vector_get(err_saxs,i)<<std::endl;
     }
 
     double model_evd;
