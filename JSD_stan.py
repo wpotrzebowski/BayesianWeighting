@@ -34,6 +34,32 @@ model {
   target_curve ~ normal(pred_curve, target_errors);
 }
 """
+def calculateChiCrysol(weightedIns, expIns, expErr):
+        """
+        Calculates chis same way as it is done in crysol
+        """
+        #Calculate scaling factor
+        chi2_=0.0
+        mixed_term_ = 0.0
+        square_calc_ = 0.0
+
+        Sindex = 0
+        for ins in expIns:
+            Iobs=ins
+            square_err_ = expErr[Sindex]*expErr[Sindex]
+            mixed_term_ += Iobs*weightedIns[Sindex]/square_err_
+            square_calc_ += weightedIns[Sindex]*weightedIns[Sindex]/square_err_
+            Sindex+=1
+        scale_factor = mixed_term_/square_calc_
+
+        Sindex = 0
+        for ins in expIns:
+            Iobs=ins
+            square_err_ = expErr[Sindex]*expErr[Sindex]
+            chi2_+=(Iobs-scale_factor*weightedIns[Sindex])*(Iobs-scale_factor*weightedIns[Sindex])/square_err_
+            Sindex+=1
+        chi2_=chi2_/Sindex
+        return chi2_
 
 def InfEntropy(weight):
     S = 0.0
@@ -62,15 +88,15 @@ stan_dat = {"sim_curves": simulated,
             "n_structures" : np.shape(simulated)[1],
             "priors":priors}
 sm = pystan.StanModel(model_code=stan_code)
-fit = sm.sampling(data=stan_dat, iter=1000, chains=2)
+fit = sm.sampling(data=stan_dat, iter=1000, chains=4)
 
 print(fit)
 
 #la = fit.extract(permuted=True)  # return a dictionary of arrays
-#mu = la['weights']
-
+#mu = la['scale']
+scale_factor = 1.0
 ## return an array of three dimensions: iterations, chains, parameters
-results_array = fit.extract(permuted=False)
+results_array = fit.extract(permuted=False, inc_warmup=False)
 
 nsamples = 0
 jsd_sum = 0.0
@@ -88,3 +114,6 @@ for iteration in results_array:
         current_weights = parameters[:-2]
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
+
+print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(simulated)), experimental[:,1],
+                                          experimental[:,2])

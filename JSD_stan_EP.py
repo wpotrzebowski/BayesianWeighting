@@ -36,6 +36,33 @@ model {
 }
 """
 
+def calculateChiCrysol(weightedIns, expIns, expErr):
+        """
+        Calculates chis same way as it is done in crysol
+        """
+        #Calculate scaling factor
+        chi2_=0.0
+        mixed_term_ = 0.0
+        square_calc_ = 0.0
+
+        Sindex = 0
+        for ins in expIns:
+            Iobs=ins
+            square_err_ = expErr[Sindex]*expErr[Sindex]
+            mixed_term_ += Iobs*weightedIns[Sindex]/square_err_
+            square_calc_ += weightedIns[Sindex]*weightedIns[Sindex]/square_err_
+            Sindex+=1
+        scale_factor = mixed_term_/square_calc_
+
+        Sindex = 0
+        for ins in expIns:
+            Iobs=ins
+            square_err_ = expErr[Sindex]*expErr[Sindex]
+            chi2_+=(Iobs-scale_factor*weightedIns[Sindex])*(Iobs-scale_factor*weightedIns[Sindex])/square_err_
+            Sindex+=1
+        chi2_=chi2_/Sindex
+        return chi2_
+
 def InfEntropy(weight):
     S = 0.0
     for wi in weight:
@@ -71,7 +98,7 @@ print(fit)
 #mu = la['weights']
 
 ## return an array of three dimensions: iterations, chains, parameters
-results_array = fit.extract(permuted=False)
+results_array = fit.extract(permuted=False, inc_warmup=False)
 
 nsamples = 0
 jsd_sum = 0.0
@@ -89,3 +116,7 @@ for iteration in results_array:
         current_weights = parameters[:-3]
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
+
+
+print "Crysol Chi: ", calculateChiCrysol(simulated, experimental[:,1],
+                                          experimental[:,2])
