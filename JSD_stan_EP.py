@@ -26,10 +26,13 @@ parameters {
   real boltzman_shift;
 }
 
+transformed parameters {
+    vector[n_structures] alphas;
+    alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
+}
+
 model {
   vector[n_measures] pred_curve;
-  vector[n_structures] alphas;
-  alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
   pred_curve = sim_curves * weights * scale;
   target_curve ~ normal(pred_curve, target_errors);
