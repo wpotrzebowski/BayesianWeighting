@@ -975,6 +975,7 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
     ofstream fitoutput(outfile+".fit", std::ofstream::out | std::ofstream::trunc);
     for (int i = 0; i < N; i++) {
         fitoutput.precision(8);
+        fitoutput.showpoint;
 	    fitoutput.width(14);
 	    fitoutput<<gsl_vector_get(saxs_qvector,i);
 	    fitoutput.width(14);
