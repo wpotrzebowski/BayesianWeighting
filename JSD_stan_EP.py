@@ -90,7 +90,7 @@ stan_dat = {"sim_curves": simulated,
             "n_structures" : np.shape(simulated)[1],
             "energy_priors":priors}
 sm = pystan.StanModel(model_code=stan_code)
-fit = sm.sampling(data=stan_dat, iter=1000, chains=2)
+fit = sm.sampling(data=stan_dat, iter=20000, chains=4)
 
 print(fit)
 
@@ -120,3 +120,6 @@ print (np.sqrt(jsd_sum/nsamples))
 
 print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(simulated)), experimental[:,1],
                                           experimental[:,2])
+
+fig = fit.plot(pars="weights")
+fig.savefig("stan_weights.png")

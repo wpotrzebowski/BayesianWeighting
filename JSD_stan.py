@@ -117,3 +117,6 @@ print (np.sqrt(jsd_sum/nsamples))
 
 print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(simulated)), experimental[:,1],
                                           experimental[:,2])
+
+fig = fit.plot(pars="weights")
+fig.savefig("stan_weights.png")
