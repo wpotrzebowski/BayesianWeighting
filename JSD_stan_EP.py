@@ -118,5 +118,5 @@ for iteration in results_array:
 print (np.sqrt(jsd_sum/nsamples))
 
 
-print "Crysol Chi: ", calculateChiCrysol(simulated, experimental[:,1],
+print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(simulated)), experimental[:,1],
                                           experimental[:,2])
