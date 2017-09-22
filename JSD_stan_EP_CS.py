@@ -38,8 +38,8 @@ model {
   alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
   pred_saxs = sim_saxs * weights * scale;
-  pred_css = sim_css * weights
-  target_saxs ~ normal(pred_saxs, target_errors);
+  pred_css = sim_css * weights;
+  target_saxs ~ normal(pred_saxs, target_saxserr);
   target_cs ~ normal(pred_css, sim_cserr+target_cserr);
 }
 """
