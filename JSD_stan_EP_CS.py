@@ -13,10 +13,15 @@ import pystan
 stan_code = """
 data {
   int n_measures;
+  int m_measures;
   int n_structures;
-  vector[n_measures] target_curve;
-  vector[n_measures] target_errors;
-  matrix[n_measures, n_structures] sim_curves;
+  vector[n_measures] target_saxs;
+  vector[n_measures] target_saxserr;
+  matrix[n_measures, n_structures] sim_saxs;
+  vector[m_measures] target_cs;
+  vector[m_measures] target_cserr;
+  vector[m_measures] sim_cserr;
+  matrix[m_measures, n_structures] sim_css;
   vector[n_structures] energy_priors;
 }
 
@@ -27,12 +32,15 @@ parameters {
 }
 
 model {
-  vector[n_measures] pred_curve;
+  vector[n_measures] pred_saxs;
+  vector[m_measures] pred_css;
   vector[n_structures] alphas;
   alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
-  pred_curve = sim_curves * weights * scale;
-  target_curve ~ normal(pred_curve, target_errors);
+  pred_saxs = sim_saxs * weights * scale;
+  pred_css = sim_css * weights
+  target_saxs ~ normal(pred_saxs, target_errors);
+  target_cs ~ normal(pred_css, sim_cserr+target_cserr);
 }
 """
 
@@ -78,14 +86,25 @@ def JensenShannonDiv(weights_a, weights_b):
 experimental_file = sys.argv[1]
 simulated_file = sys.argv[2]
 priors_file = sys.argv[3]
+experimental_cs_file = sys.argv[4]
+simulated_cs_file = sys.argv[5]
+simulated_cserr_file = sys.argv[6]
+
 
 experimental = np.genfromtxt(experimental_file)
 simulated = np.genfromtxt(simulated_file)
 priors = np.genfromtxt(priors_file)
+experimental_cs = np.genfromtxt(experimental_cs_file)
+simulated_cs = np.genfromtxt(simulated_cs_file)
+simulated_cserr = np.genfromtxt(simulated_cserr_file)
 
-stan_dat = {"sim_curves": simulated,
-            "target_curve": experimental[:,1],
-            "target_errors": experimental[:,2],
+stan_dat = {"sim_saxs": simulated,
+            "target_saxs": experimental[:,1],
+            "target_saxserr": experimental[:,2],
+            "sim_css": simulated_cs,
+            "sim_cserr": simulated_cserr,
+            "target_cs": experimental_cs[:,1],
+            "target_cserr": experimental_cs[:,2],
             "n_measures" : np.shape(experimental)[0],
             "n_structures" : np.shape(simulated)[1],
             "energy_priors":priors}
@@ -105,7 +124,7 @@ jsd_sum = 0.0
 bayesian_weights = np.zeros(np.shape(simulated)[1])
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-3]
+        current_weights = parameters[:np.shape(simulated)[1]]
         bayesian_weights+=current_weights
         nsamples+=1
 bayesian_weights=bayesian_weights/nsamples
@@ -113,7 +132,7 @@ print(bayesian_weights)
 
 for iteration in results_array:
     for parameters in iteration:
-        current_weights = parameters[:-3]
+        current_weights = parameters[:np.shape(simulated)[1]]
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
 
@@ -122,4 +141,4 @@ print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(si
                                           experimental[:,2])
 
 fig = fit.plot(pars="weights")
-fig.savefig("stan_weights_ep.png")
+fig.savefig("stan_weights_ep_cs.png")
