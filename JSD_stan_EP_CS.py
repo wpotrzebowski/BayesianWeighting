@@ -103,9 +103,10 @@ stan_dat = {"sim_saxs": simulated,
             "target_saxserr": experimental[:,2],
             "sim_css": simulated_cs,
             "sim_cserr": simulated_cserr,
-            "target_cs": experimental_cs[:,1],
-            "target_cserr": experimental_cs[:,2],
+            "target_cs": experimental_cs[:,0],
+            "target_cserr": experimental_cs[:,1],
             "n_measures" : np.shape(experimental)[0],
+            "m_measures" : np.shape(experimental_cs)[0],
             "n_structures" : np.shape(simulated)[1],
             "energy_priors":priors}
 sm = pystan.StanModel(model_code=stan_code)
