@@ -26,13 +26,10 @@ parameters {
   real boltzman_shift;
 }
 
-transformed parameters {
-    vector[n_structures] alphas;
-    alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
-}
-
 model {
   vector[n_measures] pred_curve;
+  vector[n_structures] alphas;
+  alphas = exp(-1.717472947*(boltzman_shift+energy_priors));
   weights ~ dirichlet(alphas);
   pred_curve = sim_curves * weights * scale;
   target_curve ~ normal(pred_curve, target_errors);
@@ -93,7 +90,7 @@ stan_dat = {"sim_curves": simulated,
             "n_structures" : np.shape(simulated)[1],
             "energy_priors":priors}
 sm = pystan.StanModel(model_code=stan_code)
-fit = sm.sampling(data=stan_dat, iter=20000, chains=4)
+fit = sm.sampling(data=stan_dat, iter=10000, chains=4)
 
 print(fit)
 
