@@ -939,6 +939,9 @@ void run_vbw(const int &again, const int &k, const std::string &pre_weight_file,
 	///////////////////////////////////////////////////////////////////////	
 
     output<<"Jesen-Shannon Div "<<sqrt(jsd1_sum/double(sampling_step))<<std::endl;
+    if (rosettaPrior) {
+        output<<"BoltzmanShift "<<shiftEnergyInternal<<std::endl;
+    }
     //}//Finish VBW section
     }
     //Model Evidence calculation
