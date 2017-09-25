@@ -77,46 +77,59 @@ experimental_file = sys.argv[1]
 simulated_file = sys.argv[2]
 priors_file = sys.argv[3]
 
+file_names = open(sys.argv[4]).readlines()[0].split(" ")
+
 experimental = np.genfromtxt(experimental_file)
 simulated = np.genfromtxt(simulated_file)
 priors = np.genfromtxt(priors_file)
 
-stan_dat = {"sim_curves": simulated,
-            "target_curve": experimental[:,1],
-            "target_errors": experimental[:,2],
-            "n_measures" : np.shape(experimental)[0],
-            "n_structures" : np.shape(simulated)[1],
-            "priors":priors}
+sim_curves = simulated
+target_curve = experimental[:,1]
+target_errors = experimental[:,2]
+n_measures = np.shape(experimental)[0]
+n_structures = np.shape(simulated)[1]
+alphas = priors
+
+threshold = 0.001
+#I beleive model can be compiled once only
 sm = pystan.StanModel(model_code=stan_code)
-fit = sm.sampling(data=stan_dat, iter=1000, chains=4)
+for iteration in range(5):
+    stan_dat = {"sim_curves": sim_curves,
+            "target_curve": target_curve,
+            "target_errors": target_errors,
+            "n_measures" : n_measures,
+            "n_structures" : n_structures,
+            "alphas":alphas}
 
-print(fit)
+    fit = sm.sampling(data=stan_dat, iter=2000, chains=4, n_jobs=8)
+    current_weights = fit.summary()['summary'][:,0][:n_structures]
+    sim_curves = sim_curves[current_weights>threshold]
+    alphas = alphas[current_weights>threshold]
+    n_structures = np.shape(sim_curves)[1]
+    print(fit)
 
-#la = fit.extract(permuted=True)  # return a dictionary of arrays
-#mu = la['scale']
-scale_factor = 1.0
 ## return an array of three dimensions: iterations, chains, parameters
-results_array = fit.extract(permuted=False, inc_warmup=False)
-
-nsamples = 0
-jsd_sum = 0.0
-bayesian_weights = np.zeros(np.shape(simulated)[1])
-for iteration in results_array:
-    for parameters in iteration:
-        current_weights = parameters[:-2]
-        bayesian_weights+=current_weights
-        nsamples+=1
-bayesian_weights=bayesian_weights/nsamples
-print(bayesian_weights)
-
-for iteration in results_array:
-    for parameters in iteration:
-        current_weights = parameters[:-2]
-        jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
-print (np.sqrt(jsd_sum/nsamples))
-
-print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(simulated)), experimental[:,1],
-                                          experimental[:,2])
-
-fig = fit.plot(pars="weights")
-fig.savefig("stan_weights.png")
+# results_array = fit.extract(permuted=False, inc_warmup=False)
+#
+# nsamples = 0
+# jsd_sum = 0.0
+# bayesian_weights = np.zeros(np.shape(simulated)[1])
+# for iteration in results_array:
+#     for parameters in iteration:
+#         current_weights = parameters[:-2]
+#         bayesian_weights+=current_weights
+#         nsamples+=1
+# bayesian_weights=bayesian_weights/nsamples
+# print(bayesian_weights)
+#
+# for iteration in results_array:
+#     for parameters in iteration:
+#         current_weights = parameters[:-2]
+#         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
+# print (np.sqrt(jsd_sum/nsamples))
+#
+# print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,np.transpose(simulated)), experimental[:,1],
+#                                           experimental[:,2])
+#
+# fig = fit.plot(pars="weights")
+# fig.savefig("stan_weights.png")
