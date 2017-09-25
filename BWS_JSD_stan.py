@@ -99,7 +99,7 @@ for iteration in range(5):
             "target_errors": target_errors,
             "n_measures" : n_measures,
             "n_structures" : n_structures,
-            "alphas":alphas}
+            "priors":alphas}
 
     fit = sm.sampling(data=stan_dat, iter=2000, chains=4, n_jobs=8)
     current_weights = fit.summary()['summary'][:,0][:n_structures]
