@@ -76,13 +76,14 @@ def JensenShannonDiv(weights_a, weights_b):
 experimental_file = sys.argv[1]
 simulated_file = sys.argv[2]
 priors_file = sys.argv[3]
-
-file_names = open(sys.argv[4]).readlines()[0].split(" ")
+names_file = sys.argv[4]
 
 experimental = np.genfromtxt(experimental_file)
 simulated = np.genfromtxt(simulated_file)
 priors = np.genfromtxt(priors_file)
-
+#file_names = open(sys.argv[4]).readlines[0].split(" ")
+file_names = np.genfromtxt(names_file)
+#TODO: Otherwise initialze as a array from standard list
 sim_curves = simulated
 target_curve = experimental[:,1]
 target_errors = experimental[:,2]
@@ -101,13 +102,15 @@ for iteration in range(5):
             "n_structures" : n_structures,
             "priors":alphas}
 
-    fit = sm.sampling(data=stan_dat, iter=2000, chains=4, n_jobs=8)
+    fit = sm.sampling(data=stan_dat, iter=100, chains=4, n_jobs=1)
     current_weights = fit.summary()['summary'][:,0][:n_structures]
     sim_curves = sim_curves[:,current_weights>threshold]
     alphas = alphas[current_weights>threshold]
     n_structures = np.shape(sim_curves)[1]
+    file_names = file_names[current_weights>threshold]
     print(fit)
 
+print(file_names)
 ## return an array of three dimensions: iterations, chains, parameters
 results_array = fit.extract(permuted=False, inc_warmup=False)
 nsamples = 0
@@ -127,7 +130,7 @@ for iteration in results_array:
         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
 print (np.sqrt(jsd_sum/nsamples))
 print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,
-        np.transpose(simulated)), experimental[:,1], experimental[:,2])
+        np.transpose(sim_curves)), experimental[:,1], experimental[:,2])
 
 fig = fit.plot(pars="weights")
 fig.savefig("stan_weights.png")
