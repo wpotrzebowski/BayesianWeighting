@@ -96,7 +96,8 @@ threshold = 0.001
 #I beleive model can be compiled once only
 sm = pystan.StanModel(model_code=stan_code)
 for iteration in range(5):
-    log_file.write("Starting iteration "+str(iteration)+" with "+n_structures+" models")
+    log_file.write("Starting iteration "+str(iteration)+" with "
+                   +str(n_structures)+" models")
     stan_dat = {"sim_curves": sim_curves,
             "target_curve": target_curve,
             "target_errors": target_errors,
