@@ -90,11 +90,13 @@ target_errors = experimental[:,2]
 n_measures = np.shape(experimental)[0]
 n_structures = np.shape(simulated)[1]
 alphas = priors
+log_file = open("full_bayesian.log","w")
 
 threshold = 0.001
 #I beleive model can be compiled once only
 sm = pystan.StanModel(model_code=stan_code)
 for iteration in range(5):
+    log_file.write("Starting iteration "+str(iteration)+" with "+n_structures+" models")
     stan_dat = {"sim_curves": sim_curves,
             "target_curve": target_curve,
             "target_errors": target_errors,
@@ -102,15 +104,20 @@ for iteration in range(5):
             "n_structures" : n_structures,
             "priors":alphas}
 
-    fit = sm.sampling(data=stan_dat, iter=100, chains=4, n_jobs=1)
+    fit = sm.sampling(data=stan_dat, iter=2000, chains=4, n_jobs=8)
     current_weights = fit.summary()['summary'][:,0][:n_structures]
+    lp_ = fit.summary()['summary'][:,0][-1]
     sim_curves = sim_curves[:,current_weights>threshold]
     alphas = alphas[current_weights>threshold]
     n_structures = np.shape(sim_curves)[1]
     file_names = file_names[current_weights>threshold]
+    log_file.writelines(fit.summary()['summary'][:,0])
+    fig = fit.plot()
+    fig.savefig("stan_fit_"+str(iteration)+".png")
     print(fit)
 
 print(file_names)
+log_file.close()
 ## return an array of three dimensions: iterations, chains, parameters
 results_array = fit.extract(permuted=False, inc_warmup=False)
 nsamples = 0
@@ -131,6 +138,5 @@ for iteration in results_array:
 print (np.sqrt(jsd_sum/nsamples))
 print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,
         np.transpose(sim_curves)), experimental[:,1], experimental[:,2])
-
 fig = fit.plot(pars="weights")
 fig.savefig("stan_weights.png")
