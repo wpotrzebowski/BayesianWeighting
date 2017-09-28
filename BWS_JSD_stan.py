@@ -105,39 +105,44 @@ for iteration in range(5):
             "n_structures" : n_structures,
             "priors":alphas}
 
-    fit = sm.sampling(data=stan_dat, iter=2000, chains=4, n_jobs=8)
-    current_weights = fit.summary()['summary'][:,0][:n_structures]
-    lp_ = fit.summary()['summary'][:,0][-1]
+    #fit = sm.sampling(data=stan_dat, iter=2000, chains=4, n_jobs=8)
+    #current_weights = fit.summary()['summary'][:,0][:n_structures]
+    fit = sm.vb(data=stan_dat, iter=100000)
+    current_weights = fit["mean_pars"][:n_structures]
+    #lp_ = fit.summary()['summary'][:,0][-1]
     sim_curves = sim_curves[:,current_weights>threshold]
     alphas = alphas[current_weights>threshold]
     n_structures = np.shape(sim_curves)[1]
     file_names = file_names[current_weights>threshold]
-    log_file.writelines(fit.summary()['summary'][:,0])
-    fig = fit.plot()
-    fig.savefig("stan_fit_"+str(iteration)+".png")
-    print(fit)
+    #log_file.writelines(fit.summary()['summary'][:,0])
+    log_file.writelines(current_weights)
+    #fig = fit.plot()
+    #fig.savefig("stan_fit_"+str(iteration)+".png")
+    #print(fit)
 
 print(file_names)
 log_file.close()
 ## return an array of three dimensions: iterations, chains, parameters
-results_array = fit.extract(permuted=False, inc_warmup=False)
-nsamples = 0
-jsd_sum = 0.0
-bayesian_weights = np.zeros(np.shape(sim_curves)[1])
-for iteration in results_array:
-    for parameters in iteration:
-        current_weights = parameters[:n_structures]
-        bayesian_weights+=current_weights
-        nsamples+=1
-bayesian_weights=bayesian_weights/nsamples
-print(bayesian_weights)
-
-for iteration in results_array:
-    for parameters in iteration:
-        current_weights = parameters[:n_structures]
-        jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
-print (np.sqrt(jsd_sum/nsamples))
-print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,
-        np.transpose(sim_curves)), experimental[:,1], experimental[:,2])
-fig = fit.plot(pars="weights")
-fig.savefig("stan_weights.png")
+# results_array = fit.extract(permuted=False, inc_warmup=False)
+# nsamples = 0
+# jsd_sum = 0.0
+# bayesian_weights = np.zeros(np.shape(sim_curves)[1])
+# for iteration in results_array:
+#     for parameters in iteration:
+#         current_weights = parameters[:n_structures]
+#         bayesian_weights+=current_weights
+#         nsamples+=1
+# bayesian_weights=bayesian_weights/nsamples
+# print(bayesian_weights)
+#
+# for iteration in results_array:
+#     for parameters in iteration:
+#         current_weights = parameters[:n_structures]
+#         jsd_sum+=JensenShannonDiv(current_weights, bayesian_weights)
+# print (np.sqrt(jsd_sum/nsamples))
+# print "Crysol Chi: ", calculateChiCrysol(np.dot(bayesian_weights,
+#         np.transpose(sim_curves)), experimental[:,1], experimental[:,2])
+# fig = fit.plot(pars="weights")
+# fig.savefig("stan_weights.png")
+print "Crysol Chi: ", calculateChiCrysol(np.dot(current_weights,
+         np.transpose(sim_curves)), experimental[:,1], experimental[:,2])
