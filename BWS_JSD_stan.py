@@ -82,7 +82,7 @@ experimental = np.genfromtxt(experimental_file)
 simulated = np.genfromtxt(simulated_file)
 priors = np.genfromtxt(priors_file)
 #file_names = open(sys.argv[4]).readlines[0].split(" ")
-file_names = np.genfromtxt(names_file)
+file_names = np.genfromtxt(names_file,dtype='unicode')
 #TODO: Otherwise initialze as a array from standard list
 sim_curves = simulated
 target_curve = experimental[:,1]
@@ -97,7 +97,7 @@ threshold = 0.001
 sm = pystan.StanModel(model_code=stan_code)
 for iteration in range(5):
     log_file.write("Starting iteration "+str(iteration)+" with "
-                   +str(n_structures)+" models")
+                   +str(n_structures)+" models\n")
     stan_dat = {"sim_curves": sim_curves,
             "target_curve": target_curve,
             "target_errors": target_errors,
@@ -114,7 +114,7 @@ for iteration in range(5):
     alphas = alphas[current_weights>threshold]
     n_structures = np.shape(sim_curves)[1]
     file_names = file_names[current_weights>threshold]
-    #log_file.writelines(fit.summary()['summary'][:,0])
+    #np.savetxt("fit.txt",fit.summary()['summary'][:,0],delimiter=" ")
     log_file.writelines(current_weights)
     #fig = fit.plot()
     #fig.savefig("stan_fit_"+str(iteration)+".png")
