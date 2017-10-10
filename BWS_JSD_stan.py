@@ -112,10 +112,10 @@ for iteration in range(10):
 
     #Calculating model evidence using external MCEvidence module
     stan_chain=fit.extract(permuted=True)
-    if 'weights' in stan_chain.keys(): stan_chain['samples']=stan_chain.pop('weights')
+    if 'weights' in stan_chain.keys(): stan_chain['samples']=np.c_[stan_chain.pop('weights'), stan_chain.pop('scale')]
     if 'lp__' in stan_chain.keys(): stan_chain['loglikes']=stan_chain.pop('lp__')
     try:
-        mce=MCEvidence(stan_chain,ischain=True).evidence(prewhiten=False)
+        mce=MCEvidence(stan_chain,ischain=True).evidence()
         log_file.write("Model evidence: ")
         log_file.writelines(np.array_str(mce)+"\n")
     except:
